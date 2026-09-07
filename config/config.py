@@ -40,7 +40,7 @@ RISK_THRESHOLD_CRITICAL = 70.0  # >70: Critical alert
 
 # LLM & GenAI Settings
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
 LLM_CACHE_FILE = ARTIFACTS_DIR / "llm_rca_cache.json"
 
 # Server & Network

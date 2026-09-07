@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Data Center Health AI | Enterprise AIOps 3D Digital Twin</title>
-  <meta name="description" content="Enterprise AIOps 3D Digital Twin predicting server infrastructure failures with Machine Learning, Groq Llama-3.3-70B RCA, and a live Three.js 3D server room dashboard.">
+  <title>DC Health AI | Real-Time Infrastructure Health</title>
+  <meta name="description" content="DC Health AI - Enterprise AIOps 3D Digital Twin predicting server infrastructure failures with Machine Learning, Groq Llama-3.3-70B RCA, and a live 3D server room digital twin.">
   
-  <!-- Modern Typography -->
+  <!-- Modern Typography (Inter & JetBrains Mono) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- Enterprise Light Theme Stylesheet -->
+  <!-- Main Stylesheet -->
   <link rel="stylesheet" href="/css/style.css">
 
-  <!-- Three.js ES Module Mapping -->
+  <!-- Three.js ES Module Import Map -->
   <script type="importmap">
     {
       "imports": {
@@ -24,252 +24,644 @@
     }
   </script>
 </head>
-<body>
+<body class="light-theme">
 
-  <!-- Top Enterprise NOC Navbar -->
-  <header class="top-navbar">
-    <div class="brand-section">
-      <div class="brand-logo-hex">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2">
-          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-          <polyline points="2 17 12 22 22 17"></polyline>
-          <polyline points="2 12 12 17 22 12"></polyline>
+  <!-- =========================================================================
+       1. TOP NAVBAR
+       ========================================================================= -->
+  <header class="top-header">
+    <!-- Brand Logo & Motto -->
+    <div class="header-brand">
+      <div class="brand-logo-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+          <path d="M8 13h8"/>
+          <path d="M8 16h8"/>
+          <circle cx="10" cy="13" r="0.5" fill="#2563eb"/>
+          <circle cx="10" cy="16" r="0.5" fill="#2563eb"/>
         </svg>
       </div>
-      <div class="brand-titles">
-        <h1 class="brand-title">Data Center Health AI</h1>
-        <span class="brand-sub">HYPERSCALE AIOPS DIGITAL TWIN // NOC COMMAND</span>
-      </div>
-      
-      <!-- Facility Switcher Dropdown Pill -->
-      <div class="facility-selector-wrapper">
-        <span class="facility-label">Facility:</span>
-        <select class="facility-select" id="facility-select">
-          <option value="dc-1">DC-1: Alpha Compute Hall (Primary)</option>
-          <option value="dc-2">DC-2: Beta Storage Hall (Redundant)</option>
-        </select>
+      <div class="brand-text">
+        <span class="brand-title">DC HEALTH AI</span>
+        <span class="brand-tagline">Smart Infrastructure. Zero Surprises.</span>
       </div>
     </div>
 
-    <!-- Live Cluster KPIs -->
-    <div class="cluster-kpis">
-      <div class="kpi-chip">
-        <span class="kpi-dot healthy"></span>
-        <span>Healthy: <strong id="kpi-healthy">8</strong></span>
-      </div>
-      <div class="kpi-chip">
-        <span class="kpi-dot warning"></span>
-        <span>Warning: <strong id="kpi-warning">0</strong></span>
-      </div>
-      <div class="kpi-chip">
-        <span class="kpi-dot critical"></span>
-        <span>Critical: <strong id="kpi-critical">0</strong></span>
-      </div>
-      <div class="kpi-chip">
-        <span>PUE: <strong id="kpi-pue" style="color: var(--color-sky);">1.18</strong></span>
-      </div>
-      <div class="kpi-chip">
-        <span>Cluster Risk: <strong id="kpi-mean-risk" style="color: var(--color-emerald);">14.2%</strong></span>
-      </div>
+    <!-- Search Bar -->
+    <div class="header-search">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" id="search-input" placeholder="Search server, rack or metric..." autocomplete="off">
     </div>
 
-    <!-- Actions & Benchmark Trigger -->
-    <div class="nav-actions">
-      <button class="btn-light-action" id="btn-benchmark-report">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="20" x2="18" y2="10"></line>
-          <line x1="12" y1="20" x2="12" y2="4"></line>
-          <line x1="6" y1="20" x2="6" y2="14"></line>
+    <!-- Right Controls: Theme Toggle, Notifications, User Profile -->
+    <div class="header-actions">
+      <!-- Theme Switcher (Light / Dark Mode) -->
+      <button class="icon-btn" id="theme-toggle" title="Toggle Light / Dark Mode">
+        <svg class="theme-icon sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
         </svg>
-        Model Tournament Matrix
+        <svg class="theme-icon moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
       </button>
-      <div class="kpi-chip" style="font-family: var(--font-mono); font-size: 0.74rem;">
-        <span id="live-clock">UTC 00:00:00</span>
+
+      <!-- Audio Mute / Unmute Toggle -->
+      <button class="icon-btn" id="sound-toggle" title="Toggle Datacenter Audio Hum & FX">
+        <svg class="sound-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+        </svg>
+      </button>
+
+      <!-- Notifications Bell with Red Badge Count -->
+      <button class="icon-btn has-badge" id="notifications-btn" title="View Active Incidents">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <span class="notification-badge" id="alert-count-badge">3</span>
+      </button>
+
+      <!-- User Profile Badge -->
+      <div class="user-profile-badge">
+        <div class="profile-avatar">CK</div>
+        <div class="profile-meta">
+          <span class="profile-name">Chaitu Maya</span>
+          <span class="profile-role">AI Ops Engineer</span>
+        </div>
       </div>
     </div>
   </header>
 
-  <!-- 3D WebGL Canvas Viewport -->
-  <div id="canvas-container"></div>
-
-  <!-- Left NOC Control Dock -->
-  <aside class="noc-sidebar">
-    <!-- View Mode Switcher -->
-    <div>
-      <div class="sidebar-section-title">
-        <span>Rendering Mode</span>
-        <span style="font-size: 0.65rem; color: var(--text-muted);">SHADERS</span>
-      </div>
-      <div class="view-mode-toggle">
-        <button class="toggle-btn active" id="btn-mode-pbr">Hardware PBR</button>
-        <button class="toggle-btn" id="btn-mode-thermal">Thermal FLIR</button>
-      </div>
+  <!-- =========================================================================
+       2. HERO HEADER & 4 TOP METRIC CARDS
+       ========================================================================= -->
+  <section class="hero-header-section">
+    <div class="hero-titles">
+      <span class="hero-eyebrow">DATA CENTER</span>
+      <h1 class="hero-heading">Real-Time Infrastructure Health</h1>
+      <p class="hero-subheading">Predict &bull; Explain &bull; Visualize &bull; Prevent</p>
     </div>
 
-    <!-- Camera Presets -->
-    <div>
-      <div class="sidebar-section-title">
-        <span>Camera Perspectives</span>
-        <span style="font-size: 0.65rem; color: var(--text-muted);">STUDIO</span>
+    <!-- 4 Key Stat Metric Cards -->
+    <div class="metric-cards-grid">
+      <!-- Card 1: Healthy Servers -->
+      <div class="stat-card stat-healthy">
+        <div class="stat-card-icon icon-emerald">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+          </svg>
+        </div>
+        <div class="stat-card-content">
+          <div class="stat-card-val" id="card-healthy-count">24</div>
+          <div class="stat-card-label">Healthy Servers</div>
+          <div class="stat-card-trend trend-green">&uarr; +2</div>
+        </div>
       </div>
-      <div class="camera-grid">
-        <button class="cam-btn active" data-cam="isometric">🎥 Isometric</button>
-        <button class="cam-btn" data-cam="aisle1">🚶 Aisle 1 Cold</button>
-        <button class="cam-btn" data-cam="aisle2">🚶 Aisle 2 Cold</button>
-        <button class="cam-btn" data-cam="topdown">📐 Top Heatmap</button>
-        <button class="cam-btn" data-cam="orbit" style="grid-column: span 2;">🛸 Drone Orbit Flythrough</button>
+
+      <!-- Card 2: At Risk -->
+      <div class="stat-card stat-warning">
+        <div class="stat-card-icon icon-amber">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="stat-card-content">
+          <div class="stat-card-val" id="card-warning-count">3</div>
+          <div class="stat-card-label">At Risk</div>
+          <div class="stat-card-trend trend-orange">&uarr; +1</div>
+        </div>
+      </div>
+
+      <!-- Card 3: Critical -->
+      <div class="stat-card stat-critical">
+        <div class="stat-card-icon icon-rose">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+            <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <div class="stat-card-content">
+          <div class="stat-card-val" id="card-critical-count">1</div>
+          <div class="stat-card-label">Critical</div>
+          <div class="stat-card-trend trend-red">&mdash; 0</div>
+        </div>
+      </div>
+
+      <!-- Card 4: Total Servers -->
+      <div class="stat-card stat-total">
+        <div class="stat-card-icon icon-blue">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+        </div>
+        <div class="stat-card-content">
+          <div class="stat-card-val" id="card-total-count">28</div>
+          <div class="stat-card-label">Total Servers</div>
+          <div class="stat-card-sub" id="card-metrics-count">38 Metrics / Server</div>
+        </div>
       </div>
     </div>
+  </section>
 
-    <!-- Failure Simulator (Demonstrating AIOps self-healing) -->
-    <div>
-      <div class="sidebar-section-title">
-        <span>Live Failure Injection</span>
-        <span style="font-size: 0.65rem; color: var(--color-amber);">SIMULATION</span>
-      </div>
-      <div class="sim-controls">
-        <button class="btn-sim btn-sim-mem" id="btn-sim-mem">
-          <span>⚡ Inject Memory Leak</span>
-          <span style="font-size: 0.68rem; font-family: var(--font-mono);">RACK-03</span>
+  <!-- =========================================================================
+       3. MAIN BODY (LEFT SIDEBAR + CENTER 3D & CHARTS + RIGHT INSPECTOR)
+       ========================================================================= -->
+  <main class="dashboard-main-grid">
+
+    <!-- ----------------- LEFT SIDEBAR ----------------- -->
+    <aside class="sidebar-nav-card">
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="overview">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Overview</span>
         </button>
-        <button class="btn-sim btn-sim-disk" id="btn-sim-disk">
-          <span>🚨 Inject NVMe Disk Stall</span>
-          <span style="font-size: 0.68rem; font-family: var(--font-mono);">RACK-01</span>
+
+        <button class="nav-item" data-tab="servers">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+          <span>Servers</span>
         </button>
-        <button class="btn-sim btn-sim-heal" id="btn-sim-heal">
-          <span>✅ Auto-Heal & Remediate</span>
-          <span style="font-size: 0.68rem; font-family: var(--font-mono);">ALL NODES</span>
+
+        <button class="nav-item" data-tab="analytics">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          <span>Analytics</span>
+        </button>
+
+        <button class="nav-item" data-tab="alerts">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span>Alerts</span>
+          <span class="nav-badge-pill">3</span>
+        </button>
+
+        <button class="nav-item" data-tab="logs">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span>Logs</span>
+        </button>
+
+        <button class="nav-item" data-tab="ai-assistant">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
+            <path d="M12 2a10 10 0 0 1 10 10h-10V2z"></path>
+            <path d="M12 12 2.1 12a10.1 10.1 0 0 0 9.9 10z"></path>
+          </svg>
+          <span>AI Assistant</span>
+        </button>
+
+        <button class="nav-item" data-tab="reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg>
+          <span>Reports</span>
+        </button>
+
+        <button class="nav-item" data-tab="settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <!-- Bottom Status Widget -->
+      <div class="sidebar-footer-widget">
+        <div class="system-status-box">
+          <div class="status-indicator-dot"></div>
+          <div class="status-texts">
+            <span class="status-title">System Live</span>
+            <span class="status-sub">All systems operational</span>
+          </div>
+        </div>
+        <div class="live-clock-box">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <span id="system-date-time">Sep 06, 2026 &bull; 10:24 AM</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ----------------- CENTER COLUMN (3D DIGITAL TWIN + 3 ANALYTICS CARDS) ----------------- -->
+    <div class="center-content-col">
+      
+      <!-- 3D Digital Twin Card -->
+      <div class="viewport-3d-card" id="viewport-3d-card">
+        <!-- Card Top Overlays -->
+        <div class="viewport-top-controls">
+          <!-- Camera Perspectives Pills -->
+          <div class="camera-pill-group">
+            <button class="cam-pill-btn active" data-cam="overview">Overview</button>
+            <button class="cam-pill-btn" data-cam="left">Left</button>
+            <button class="cam-pill-btn" data-cam="right">Right</button>
+            <button class="cam-pill-btn" data-cam="top">Top</button>
+          </div>
+
+          <!-- Live Badge & Fullscreen Expand -->
+          <div class="viewport-meta-badges">
+            <span class="badge-live-pulse">
+              <span class="live-dot"></span> Live
+            </span>
+            <button class="icon-pill-btn" id="btn-fullscreen" title="Toggle Fullscreen">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Three.js Canvas Container -->
+        <div class="canvas-3d-wrapper" id="canvas-container"></div>
+
+        <!-- Floating Controls Guide Pill -->
+        <div class="viewport-bottom-pill">
+          <span>🖱️ Rotate</span>
+          <span class="pill-divider">&bull;</span>
+          <span>🔍 Zoom</span>
+          <span class="pill-divider">&bull;</span>
+          <span>✋ Pan</span>
+          <span class="pill-divider">&bull;</span>
+          <span class="pill-hint">Click a rack to view details</span>
+        </div>
+      </div>
+
+      <!-- Bottom 3 Analytics Cards Grid -->
+      <div class="bottom-analytics-grid">
+        
+        <!-- Card 1: Server Health Distribution (Donut Chart) -->
+        <div class="analytics-card">
+          <div class="analytics-card-header">
+            <div class="header-icon-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+              </svg>
+              <span>Server Health Distribution</span>
+            </div>
+          </div>
+          <div class="donut-chart-wrapper">
+            <div class="donut-canvas-container">
+              <canvas id="donut-canvas" width="130" height="130"></canvas>
+              <div class="donut-center-text">
+                <span class="donut-number" id="donut-total">28</span>
+                <span class="donut-label">Servers</span>
+              </div>
+            </div>
+            <div class="donut-legend">
+              <div class="legend-row">
+                <span class="legend-dot dot-green"></span>
+                <span class="legend-name">Healthy</span>
+                <strong class="legend-val">24 (86%)</strong>
+              </div>
+              <div class="legend-row">
+                <span class="legend-dot dot-orange"></span>
+                <span class="legend-name">At Risk</span>
+                <strong class="legend-val">3 (11%)</strong>
+              </div>
+              <div class="legend-row">
+                <span class="legend-dot dot-red"></span>
+                <span class="legend-name">Critical</span>
+                <strong class="legend-val">1 (3%)</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Risk Trend (Last 24 Hours) -->
+        <div class="analytics-card">
+          <div class="analytics-card-header">
+            <div class="header-icon-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+              <span>Risk Trend (Last 24 Hours)</span>
+            </div>
+            <div class="badge-risk-peak" id="trend-peak-badge">
+              <span>Risk: <strong>87%</strong></span>
+              <span class="peak-time">20:40</span>
+            </div>
+          </div>
+          <div class="risk-trend-canvas-box">
+            <canvas id="risk-trend-canvas" width="340" height="110"></canvas>
+            <div class="trend-x-axis">
+              <span>00:00</span>
+              <span>06:00</span>
+              <span>12:00</span>
+              <span>18:00</span>
+              <span>24:00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Model Outputs -->
+        <div class="analytics-card">
+          <div class="analytics-card-header">
+            <div class="header-icon-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+              <span>Model Outputs</span>
+            </div>
+            <button class="btn-text-action" id="btn-open-tournament">Benchmark</button>
+          </div>
+          <div class="models-meter-list">
+            <!-- Row 1: Isolation Forest -->
+            <div class="model-row">
+              <div class="model-meta">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span>Isolation Forest</span>
+              </div>
+              <div class="model-bar-wrap">
+                <div class="model-bar-fill bar-coral" style="width: 72%;"></div>
+              </div>
+              <span class="model-score-val" id="model-score-if">0.72</span>
+            </div>
+
+            <!-- Row 2: LSTM Autoencoder -->
+            <div class="model-row">
+              <div class="model-meta">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                <span>LSTM Autoencoder</span>
+              </div>
+              <div class="model-bar-wrap">
+                <div class="model-bar-fill bar-coral" style="width: 81%;"></div>
+              </div>
+              <span class="model-score-val" id="model-score-rc">0.81</span>
+            </div>
+
+            <!-- Row 3: LLM Confidence -->
+            <div class="model-row">
+              <div class="model-meta">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"></path></svg>
+                <span>LLM Confidence</span>
+              </div>
+              <div class="model-bar-wrap">
+                <div class="model-bar-fill bar-mint" style="width: 94%;"></div>
+              </div>
+              <span class="model-score-val" id="model-score-llm">0.94</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ----------------- RIGHT COLUMN (SELECTED SERVER INSPECTOR CARD) ----------------- -->
+    <aside class="selected-server-card" id="selected-server-card">
+      <!-- Header: Selected Server Title & Status Badge -->
+      <div class="inspector-card-header">
+        <div class="selected-badge-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+          <div>
+            <span class="inspector-eyebrow">Selected Server</span>
+            <h2 class="inspector-server-id" id="ins-server-id">DC-07</h2>
+          </div>
+        </div>
+        <div class="badge-status-pill badge-critical" id="ins-status-badge">
+          <span>&Delta;</span> Critical
+        </div>
+      </div>
+
+      <!-- Health Score Radial Meter -->
+      <div class="health-score-container">
+        <div class="health-ring-wrap">
+          <canvas id="health-ring-canvas" width="80" height="80"></canvas>
+          <div class="health-ring-center">
+            <span class="health-ring-num" id="ins-health-score">13</span>
+            <span class="health-ring-denom">/ 100</span>
+          </div>
+        </div>
+        <div class="health-score-details">
+          <div class="score-row">
+            <span class="score-label">Uptime:</span>
+            <strong class="score-val" id="ins-uptime">12 days 4 hrs</strong>
+          </div>
+          <div class="score-row">
+            <span class="score-label">Model Risk Score:</span>
+            <strong class="score-val text-red" id="ins-risk-score">87%</strong>
+          </div>
+          <div class="score-row">
+            <span class="score-label">Predicted Failure:</span>
+            <strong class="score-val text-red" id="ins-failure-time">~ 17 minutes</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resource Usage Progress Bars -->
+      <div class="resource-usage-section">
+        <div class="section-title-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line></svg>
+          <span>Resource Usage</span>
+        </div>
+
+        <div class="resource-bars-list">
+          <!-- CPU -->
+          <div class="resource-bar-row">
+            <span class="res-label">CPU</span>
+            <div class="res-track">
+              <div class="res-bar bar-danger" id="bar-cpu" style="width: 92%;"></div>
+            </div>
+            <span class="res-percent" id="val-cpu">92%</span>
+          </div>
+
+          <!-- Memory -->
+          <div class="resource-bar-row">
+            <span class="res-label">Memory</span>
+            <div class="res-track">
+              <div class="res-bar bar-warning" id="bar-mem" style="width: 78%;"></div>
+            </div>
+            <span class="res-percent" id="val-mem">78%</span>
+          </div>
+
+          <!-- Disk I/O -->
+          <div class="resource-bar-row">
+            <span class="res-label">Disk I/O</span>
+            <div class="res-track">
+              <div class="res-bar bar-warning" id="bar-disk" style="width: 65%;"></div>
+            </div>
+            <span class="res-percent" id="val-disk">65%</span>
+          </div>
+
+          <!-- Network -->
+          <div class="resource-bar-row">
+            <span class="res-label">Network</span>
+            <div class="res-track">
+              <div class="res-bar bar-info" id="bar-net" style="width: 41%;"></div>
+            </div>
+            <span class="res-percent" id="val-net">41%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Insight (LLM / Groq) Card -->
+      <div class="ai-insight-card">
+        <div class="ai-insight-header">
+          <div class="ai-title-wrap">
+            <span class="sparkle-icon">&#10024;</span>
+            <span>AI Insight (LLM)</span>
+          </div>
+          <span class="badge-purple-new">New</span>
+        </div>
+
+        <!-- Alert Callout -->
+        <div class="ai-alert-banner" id="ai-alert-banner">
+          <span class="alert-icon">&Delta;</span>
+          <span class="alert-text" id="ai-alert-heading">High risk of failure detected.</span>
+        </div>
+
+        <!-- Description -->
+        <p class="ai-insight-desc" id="ai-alert-desc">
+          Unusual spike in memory usage combined with increasing disk I/O. This pattern resembles past failures due to memory leak or runaway process.
+        </p>
+
+        <!-- Recommended Actions List -->
+        <div class="recommended-actions-box">
+          <span class="recom-title">Recommended Actions:</span>
+          <ul class="recom-list" id="ai-recom-list">
+            <li>Check memory-intensive processes</li>
+            <li>Inspect disk queue and I/O wait</li>
+            <li>Consider restarting the affected service</li>
+          </ul>
+        </div>
+
+        <!-- Remediation Failover Action Button -->
+        <button class="btn-execute-remediate" id="btn-remediate">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Execute Auto-Remediation & Failover
         </button>
       </div>
-    </div>
 
-    <!-- Racks Quick-Jump List -->
-    <div>
-      <div class="sidebar-section-title">
-        <span>Monitored Racks (42U)</span>
-        <span style="font-size: 0.65rem; color: var(--color-emerald);" id="champion-indicator">CHAMPION: IF</span>
-      </div>
-      <div class="rack-list" id="sidebar-rack-list">
-        <!-- Filled dynamically by JavaScript -->
-      </div>
-    </div>
-  </aside>
+    </aside>
+  </main>
 
-  <!-- Right Telemetry & Groq RCA Inspector Drawer -->
-  <aside class="inspector-drawer" id="inspector-drawer" style="transform: translateX(460px); opacity: 0;">
-    <div class="drawer-header">
-      <div>
-        <h2 class="drawer-rack-title" id="drawer-rack-id">RACK-01</h2>
-        <span class="drawer-rack-sub" id="drawer-rack-name">Compute Cluster Alpha (42U)</span>
+  <!-- =========================================================================
+       4. BOTTOM ENTERPRISE BENEFIT BANNER
+       ========================================================================= -->
+  <footer class="bottom-benefits-footer">
+    <div class="benefits-pills">
+      <div class="benefit-pill">
+        <div class="pill-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
+        <div class="pill-texts">
+          <span class="pill-bold">Fewer Downtimes</span>
+          <span class="pill-light">Predict issues early</span>
+        </div>
       </div>
-      <button class="close-btn" id="drawer-close-btn">&times;</button>
-    </div>
 
-    <!-- Radial Risk Meter -->
-    <div class="radial-meter-box">
-      <div class="radial-ring" id="drawer-risk-ring">
-        <span class="radial-val" id="drawer-risk-val">18</span>
-        <span class="radial-label" id="drawer-severity">NORMAL</span>
+      <div class="benefit-pill">
+        <div class="pill-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></div>
+        <div class="pill-texts">
+          <span class="pill-bold">Faster Incident Response</span>
+          <span class="pill-light">Act before impact</span>
+        </div>
       </div>
-      <div class="rack-quick-specs">
-        <div><span>NODE:</span> <strong id="drawer-node-id" style="color: var(--color-primary);">machine-1-1</strong></div>
-        <div><span>AISLE:</span> <strong>Aisle 1 (Cold)</strong></div>
-        <div><span>POWER:</span> <strong id="drawer-power">3.8 kW</strong></div>
-        <div><span>FAN:</span> <strong id="drawer-fan">6200 RPM</strong></div>
-      </div>
-    </div>
 
-    <!-- 4 Telemetry Metrics Grid -->
-    <div class="telemetry-grid">
-      <div class="telemetry-box">
-        <div class="telemetry-box-title">CPU LOAD</div>
-        <div class="telemetry-box-val" id="drawer-cpu">34.2%</div>
+      <div class="benefit-pill">
+        <div class="pill-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div>
+        <div class="pill-texts">
+          <span class="pill-bold">Lower Operational Cost</span>
+          <span class="pill-light">Optimize infrastructure</span>
+        </div>
       </div>
-      <div class="telemetry-box">
-        <div class="telemetry-box-title">MEMORY USED</div>
-        <div class="telemetry-box-val" id="drawer-mem">52.8%</div>
-      </div>
-      <div class="telemetry-box">
-        <div class="telemetry-box-title">DISK I/O</div>
-        <div class="telemetry-box-val" id="drawer-disk">84 IOPS</div>
-      </div>
-      <div class="telemetry-box">
-        <div class="telemetry-box-title">CHASSIS TEMP</div>
-        <div class="telemetry-box-val" id="drawer-temp">32.4°C</div>
+
+      <div class="benefit-pill">
+        <div class="pill-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg></div>
+        <div class="pill-texts">
+          <span class="pill-bold">Higher Reliability</span>
+          <span class="pill-light">Keep your business running</span>
+        </div>
       </div>
     </div>
 
-    <!-- Real-time Sparkline Graph -->
-    <div class="sparkline-container">
-      <div class="sparkline-title">
-        <span>REAL-TIME RISK & LOAD TIMELINE (30s)</span>
-        <span id="sparkline-live-val" style="color: var(--color-primary);">18%</span>
-      </div>
-      <canvas id="sparkline-canvas" width="370" height="64"></canvas>
+    <!-- Executive Quote -->
+    <div class="executive-quote">
+      &ldquo;Turning data into uptime.&rdquo;
     </div>
+  </footer>
 
-    <!-- Groq Llama-3.3-70B RCA Diagnosis Card -->
-    <div class="groq-rca-card" id="drawer-rca-box" style="display: none;">
-      <div class="rca-header-badge">
-        <span class="rca-tag">⚡ Groq Llama-3.3-70B Incident Triage</span>
-        <span style="font-size: 0.65rem; color: var(--color-rose); font-family: var(--font-mono); font-weight: 700;" id="rca-urgency">IMMEDIATE</span>
-      </div>
-      <div class="rca-culprit" id="drawer-rca-culprit">Evaluating failure precursor...</div>
-      <p class="rca-desc" id="drawer-rca-desc">Awaiting telemetry diagnostics.</p>
-      <div class="rca-action-box" id="drawer-rca-action">Action: Normal operations.</div>
-      <button class="btn-auto-remediate" id="btn-remediate-now">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
-        Execute Auto-Remediation & Failover
-      </button>
-    </div>
-  </aside>
-
-  <!-- Bottom Telemetry HUD Ticker -->
-  <div class="bottom-ticker">
-    <div style="display: flex; gap: 18px; align-items: center;">
-      <span style="color: var(--color-primary); font-weight: 700;">LIVE SENSORS:</span>
-      <span>TCP Retrans: <strong id="ticker-tcp">0.02/s</strong></span>
-      <span>Page Faults: <strong id="ticker-faults">12.4/s</strong></span>
-      <span>Disk Queue: <strong id="ticker-queue">0.14</strong></span>
-      <span>Total Draw: <strong id="ticker-draw">36.2 kW</strong></span>
-    </div>
-    <div>
-      <span style="color: var(--text-muted);">MODEL:</span>
-      <span style="color: var(--color-emerald); font-weight: 700;" id="ticker-champion">ISOLATION FOREST (0.018ms)</span>
-    </div>
-  </div>
-
-  <!-- Benchmark & Model Selection Technical Report Modal -->
+  <!-- =========================================================================
+       5. MODEL TOURNAMENT MATRIX MODAL
+       ========================================================================= -->
   <div class="modal-overlay" id="benchmark-modal">
     <div class="modal-card">
       <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--color-emerald);"></div>
-          <h3 style="font-size: 1.15rem; font-weight: 800; font-family: var(--font-sans); color: var(--text-main);">MULTI-MODEL TOURNAMENT BENCHMARK & CHAMPION SELECTION</h3>
+        <div class="modal-header-title">
+          <div class="status-dot-green"></div>
+          <h3>MULTI-MODEL TOURNAMENT BENCHMARK & CHAMPION SELECTION</h3>
         </div>
-        <button class="close-btn" id="modal-close-btn">&times;</button>
+        <button class="modal-close-btn" id="modal-close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <p style="color: var(--text-sub); margin-bottom: 14px; line-height: 1.5;">
-          Empirical evaluation on the Server Machine Dataset (38 metrics &times; 28 servers) under strict zero-leakage splits (Train: 24,149, Val: 4,212, Test: 28,420).
-          The production champion was selected via multi-objective operational ranking balancing <strong>Point-Adjusted F1 (PA-F1)</strong>, <strong>PR-AUC</strong>, and <strong>sub-20ms latency</strong>.
+        <p class="modal-lead-desc">
+          Empirical evaluation on the Server Machine Dataset (38 metrics &times; 28 servers) under strict zero-leakage pre-splits. The production champion was selected via multi-objective operational ranking balancing <strong>Point-Adjusted F1 (PA-F1)</strong>, <strong>PR-AUC</strong>, and <strong>sub-20ms latency</strong>.
         </p>
-        
         <div id="benchmark-table-container">
           <p>Loading candidate models comparison...</p>
         </div>
-
-        <h4 style="margin: 20px 0 10px 0; color: var(--color-primary); font-family: var(--font-sans); font-size: 0.95rem; font-weight: 800;">CHAMPION TECHNICAL RATIONALE</h4>
-        <div id="technical-report-content" style="background: #f8fafc; border: 1px solid var(--bg-panel-border); padding: 18px; border-radius: 12px; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.55; white-space: pre-wrap; color: var(--text-sub);">
+        <h4 class="modal-sub-title">CHAMPION TECHNICAL RATIONALE</h4>
+        <div class="technical-report-box" id="technical-report-content">
           Loading full selection technical report...
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Client Application Entrypoint -->
+  <!-- Client Application Script -->
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>

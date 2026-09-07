@@ -1,0 +1,11 @@
+{
+  "4834b24e529f70a890316d17a75e3efd": {
+    "root_cause_summary": "The NVMe SSD (/dev/nvme0n1) is experiencing hardware degradation, evidenced by pending unreadable sectors and I/O command timeouts, leading to severe write latency and controller resets.",
+    "probable_culprit": "NVMe SSD Hardware Failure (Media/Controller Degradation)",
+    "impact_assessment": "Critical risk of data corruption or loss on /dev/nvme0n1p2; potential for complete node unresponsiveness due to I/O stalls; high likelihood of cascading service failures if this node hosts stateful data.",
+    "recommended_action": "Immediately drain node traffic, snapshot or evacuate data from /dev/nvme0n1p2 to a healthy volume, and initiate hardware replacement for the NVMe drive.",
+    "urgency": "Immediate",
+    "cached": false,
+    "model": "qwen/qwen3.8-27b"
+  }
+}
