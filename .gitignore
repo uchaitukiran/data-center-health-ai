@@ -1,0 +1,46 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+
+# Datasets & Large Raw Files
+data/raw/
+data/processed/
+*.csv
+*.txt
+*.parquet
+*.h5
+!data/.gitkeep
+!data/sample/
+
+# Logs & Runtime
+*.log
+logs/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Model Checkpoints (track production .pkl in artifacts, ignore intermediate dumps)
+artifacts/checkpoints/
+*.tmp
+*.bak
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

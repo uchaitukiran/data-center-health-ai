@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #ffffff;
+    font-family: 'Liberation Sans', 'DejaVu Sans', sans-serif;
+  }
+  .canvas {
+    width: 1240px;
+    padding: 34px 38px 38px 38px;
+    background: #ffffff;
+    border: 2px solid #c0d0e2;
+    border-radius: 12px;
+  }
+  /* ---------- band label chip ---------- */
+  .band-label {
+    display: inline-block;
+    background: #1a4a7a;
+    color: #ffffff;
+    font-size: 20px; font-weight: 700;
+    letter-spacing: 2px;
+    padding: 7px 16px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+  }
+  .band { width: 100%; }
+  /* ---------- node rows ---------- */
+  .row { display: grid; gap: 36px; width: 100%; }
+  .row-2 { grid-template-columns: 1fr 1fr; }
+  .row-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .row-api { grid-template-columns: 2.1fr 64px 1fr; align-items: stretch; }
+  .node {
+    background: #ffffff;
+    border: 2px solid #c0d0e2;
+    border-radius: 10px;
+    padding: 15px 20px 13px 20px;
+  }
+  .node .t {
+    font-size: 28px; font-weight: 700; color: #142840;
+    line-height: 1.2; margin-bottom: 5px;
+  }
+  .node .d {
+    font-size: 21px; color: #5a7a96; line-height: 1.35;
+  }
+  .node-lite { background: #f5f8fc; }
+  .node-hl { background: #e4ecf5; border-color: #2d7ab3; }
+  .node-hl .t { color: #1a4a7a; }
+  /* ---------- vertical arrows between bands ---------- */
+  .arrows { display: grid; width: 100%; height: 34px; }
+  .arrows-2 { grid-template-columns: 1fr 1fr; }
+  .arrows-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .arrows-1 { grid-template-columns: 1fr; }
+  .arrows .cell { position: relative; }
+  .tri {
+    position: absolute; left: 50%; top: 8px;
+    width: 0; height: 0;
+    transform: translateX(-9px);
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-top: 12px solid #2d7ab3;
+    opacity: 0.75;
+  }
+  .stem {
+    position: absolute; left: 50%; top: 0;
+    width: 3px; height: 9px;
+    transform: translateX(-1.5px);
+    background: #2d7ab3; opacity: 0.75;
+  }
+  /* ---------- horizontal link API <-> DB ---------- */
+  .hlink { display: flex; align-items: center; justify-content: center; }
+  .hlink svg { display: block; }
+</style>
+</head>
+<body>
+<div class="canvas" id="canvas">
+
+  <!-- BAND 1 : DATA SOURCES -->
+  <div class="band">
+    <div class="band-label">DATA SOURCES</div>
+    <div class="row row-2">
+      <div class="node node-lite">
+        <div class="t">Server Metrics (SMD)</div>
+        <div class="d">38 time-series sensors × 28+ servers, with failure labels</div>
+      </div>
+      <div class="node node-lite">
+        <div class="t">System Logs</div>
+        <div class="d">HPC / cloud event logs (loghub: BGL, HDFS) for log analysis</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrows arrows-2"><div class="cell"><div class="stem"></div><div class="tri"></div></div><div class="cell"><div class="stem"></div><div class="tri"></div></div></div>
+
+  <!-- BAND 2 : DATA PROCESSING -->
+  <div class="band">
+    <div class="band-label">DATA PROCESSING</div>
+    <div class="row row-2">
+      <div class="node">
+        <div class="t">Feature Engineering</div>
+        <div class="d">pandas cleaning, normalization, sliding time windows</div>
+      </div>
+      <div class="node">
+        <div class="t">Log Parser</div>
+        <div class="d">regex + template extraction, log level and event labels</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrows arrows-2"><div class="cell"><div class="stem"></div><div class="tri"></div></div><div class="cell"><div class="stem"></div><div class="tri"></div></div></div>
+
+  <!-- BAND 3 : AI ENGINE -->
+  <div class="band">
+    <div class="band-label">AI ENGINE</div>
+    <div class="row row-3">
+      <div class="node">
+        <div class="t">Isolation Forest</div>
+        <div class="d">fast baseline anomaly detection on sensor metrics</div>
+      </div>
+      <div class="node">
+        <div class="t">LSTM Autoencoder</div>
+        <div class="d">learns normal patterns, flags abnormal sequences</div>
+      </div>
+      <div class="node">
+        <div class="t">LLM Log Analyzer</div>
+        <div class="d">Groq API explains errors and suggests root cause</div>
+      </div>
+    </div>
+    <div class="arrows arrows-3" style="height:26px;"><div class="cell"><div class="stem"></div><div class="tri"></div></div><div class="cell"><div class="stem"></div><div class="tri"></div></div><div class="cell"><div class="stem"></div><div class="tri"></div></div></div>
+    <div class="row">
+      <div class="node node-hl">
+        <div class="t">Prediction Output</div>
+        <div class="d">risk score (0-100) + severity level + root-cause summary + early warning before crash</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrows arrows-1"><div class="cell"><div class="stem"></div><div class="tri"></div></div></div>
+
+  <!-- BAND 4 : API LAYER -->
+  <div class="band">
+    <div class="band-label">API LAYER</div>
+    <div class="row row-api">
+      <div class="node node-hl">
+        <div class="t">Flask REST API + WebSocket</div>
+        <div class="d">/predict, /metrics, /report &nbsp;·&nbsp; /live stream pushes real-time updates to the dashboard</div>
+      </div>
+      <div class="hlink">
+        <svg width="64" height="22" viewBox="0 0 64 22">
+          <line x1="6" y1="11" x2="58" y2="11" stroke="#2d7ab3" stroke-width="3"/>
+          <polygon points="6,11 16,5 16,17" fill="#2d7ab3"/>
+          <polygon points="58,11 48,5 48,17" fill="#2d7ab3"/>
+        </svg>
+      </div>
+      <div class="node">
+        <div class="t">PostgreSQL</div>
+        <div class="d">stores metrics, predictions, alert history</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrows arrows-1"><div class="cell"><div class="stem"></div><div class="tri"></div></div></div>
+
+  <!-- BAND 5 : PRESENTATION -->
+  <div class="band">
+    <div class="band-label">PRESENTATION</div>
+    <div class="row">
+      <div class="node node-hl">
+        <div class="t">Three.js 3D Server Room Dashboard</div>
+        <div class="d">racks glow green / orange / red by risk score &nbsp;·&nbsp; live gauges &nbsp;·&nbsp; alert popups with LLM root cause &nbsp;·&nbsp; Docker + Render deployment</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
