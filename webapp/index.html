@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Center Health AI | 3D AIOps Digital Twin</title>
+  <meta name="description" content="Production AIOps Digital Twin predicting server failures with Machine Learning, LSTM Autoencoders, Groq LLM Root Cause Analysis, and a live Three.js 3D server room dashboard.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/style.css">
+
+  <!-- Import Three.js via ES Module Shims -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header class="top-navbar">
+    <div class="brand-section">
+      <div class="brand-logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+          <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+          <line x1="6" y1="6" x2="6.01" y2="6"></line>
+          <line x1="6" y1="18" x2="6.01" y2="18"></line>
+        </svg>
+      </div>
+      <div>
+        <h1 class="brand-title">Data Center Health AI</h1>
+      </div>
+      <span class="brand-badge" id="champion-badge">MODEL: LOADING...</span>
+    </div>
+
+    <!-- Live Cluster Statistics -->
+    <div class="cluster-metrics">
+      <div class="metric-chip">
+        <span class="indicator healthy"></span>
+        <span>Healthy: <strong id="stat-healthy">0</strong></span>
+      </div>
+      <div class="metric-chip">
+        <span class="indicator warning"></span>
+        <span>Warning: <strong id="stat-warning">0</strong></span>
+      </div>
+      <div class="metric-chip">
+        <span class="indicator critical"></span>
+        <span>Critical: <strong id="stat-critical">0</strong></span>
+      </div>
+      <div class="metric-chip">
+        <span>Mean Risk: <strong id="stat-mean-risk">0.0%</strong></span>
+      </div>
+    </div>
+
+    <!-- Navbar Action Buttons -->
+    <div class="nav-actions">
+      <button class="btn-secondary" id="btn-benchmark-report">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+        Model Benchmark & Selection
+      </button>
+      <button class="btn-primary" id="btn-reset-cam">
+        Reset Camera
+      </button>
+    </div>
+  </header>
+
+  <!-- 3D Canvas Viewport -->
+  <div id="canvas-container"></div>
+
+  <!-- Bottom HUD Info Pill -->
+  <div class="hud-controls">
+    <div class="hud-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+      <span><strong>Controls:</strong> Left Click + Drag to Orbit | Right Click to Pan | Scroll to Zoom | Click Racks to Inspect</span>
+    </div>
+  </div>
+
+  <!-- Side Inspector Drawer -->
+  <aside class="inspector-drawer" id="inspector-drawer" style="display: none;">
+    <div class="drawer-header">
+      <div>
+        <h2 class="drawer-title" id="drawer-rack-id">RACK-01</h2>
+        <span class="drawer-subtitle" id="drawer-node-name">Compute Cluster Alpha (machine-1-1)</span>
+      </div>
+      <button class="close-btn" id="drawer-close-btn">&times;</button>
+    </div>
+
+    <!-- Risk Gauge -->
+    <div class="gauge-container">
+      <div class="risk-circle" id="drawer-risk-circle">
+        <span class="risk-number" id="drawer-risk-val">24</span>
+        <span class="risk-label" id="drawer-severity">NORMAL</span>
+      </div>
+    </div>
+
+    <!-- Live Telemetry Grid -->
+    <div class="metrics-grid">
+      <div class="metric-box">
+        <div class="metric-box-title">CPU LOAD</div>
+        <div class="metric-box-val" id="drawer-cpu">42.5%</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-box-title">MEMORY USED</div>
+        <div class="metric-box-val" id="drawer-mem">61.2%</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-box-title">DISK I/O</div>
+        <div class="metric-box-val" id="drawer-disk">124 IOPS</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-box-title">CHASSIS TEMP</div>
+        <div class="metric-box-val" id="drawer-temp">32.8°C</div>
+      </div>
+    </div>
+
+    <!-- GenAI Root Cause Analysis Card -->
+    <div class="rca-card" id="drawer-rca-box" style="display: none;">
+      <span class="rca-badge">Groq Llama-3.3-70B RCA Diagnosis</span>
+      <p class="rca-text" id="drawer-rca-text">Evaluating anomaly...</p>
+      <div class="rca-action" id="drawer-rca-action">Recommended Action: Normal operations.</div>
+    </div>
+  </aside>
+
+  <!-- Benchmark & Model Selection Technical Report Modal -->
+  <div class="modal-overlay" id="benchmark-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size: 1.2rem; font-weight: 700;">Multi-Model Benchmark & Champion Selection Matrix</h3>
+        <button class="close-btn" id="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); margin-bottom: 12px;">
+          Empirical evaluation on Server Machine Dataset (38 metrics &times; 28 servers) under strict train/val/test splits.
+          The production champion model was selected via multi-objective scoring balancing <strong>Point-Adjusted F1</strong>, <strong>PR-AUC</strong>, and <strong>sub-10ms latency</strong>.
+        </p>
+        
+        <!-- Table container filled dynamically via API -->
+        <div id="benchmark-table-container">
+          <p>Loading candidate models comparison...</p>
+        </div>
+
+        <h4 style="margin: 20px 0 10px 0; color: var(--neon-cyan);">Champion Model Technical Rationale</h4>
+        <div id="technical-report-content" style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 10px; font-family: var(--font-mono); font-size: 0.8rem; white-space: pre-wrap;">
+          Loading full selection technical report...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main JavaScript App Entrypoint -->
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

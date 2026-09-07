@@ -21,15 +21,20 @@ ENV/
 data/raw/
 data/processed/
 *.csv
+!artifacts/reports/*.csv
 *.txt
-*.parquet
-*.h5
+!requirements*.txt
+!requirements-render.txt
 !data/.gitkeep
 !data/sample/
 
 # Logs & Runtime
 *.log
 logs/
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
 .pytest_cache/
 .coverage
 htmlcov/
