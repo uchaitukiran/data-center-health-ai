@@ -118,3 +118,22 @@ def get_node_telemetry(node_id: str):
     limit = request.args.get("limit", 50, type=int)
     history = get_telemetry_history(node_id, limit=limit)
     return jsonify({"node_id": node_id, "history": history})
+
+@api_bp.route("/simulate/anomaly", methods=["POST"])
+def simulate_anomaly():
+    """Triggers simulated failure on a rack for live triage demonstration."""
+    from src.api.ws_stream import simulator
+    data = request.get_json(force=True) or {}
+    rack_id = data.get("rack_id", "RACK-01")
+    anomaly_type = data.get("type", "memory")
+    simulator.inject_simulation(rack_id, anomaly_type)
+    return jsonify({"status": "injected", "rack_id": rack_id, "type": anomaly_type})
+
+@api_bp.route("/simulate/remediate", methods=["POST"])
+def simulate_remediate():
+    """Remediates simulated anomaly and restores rack to normal health."""
+    from src.api.ws_stream import simulator
+    data = request.get_json(force=True) or {}
+    rack_id = data.get("rack_id", "RACK-01")
+    simulator.remediate_rack(rack_id)
+    return jsonify({"status": "remediated", "rack_id": rack_id})
