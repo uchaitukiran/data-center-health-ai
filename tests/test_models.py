@@ -32,3 +32,30 @@ def test_pca_detector_scoring():
     scores = model.predict_score(X_train)
     assert len(scores) == 200
     assert np.all(scores >= 0.0) and np.all(scores <= 1.0)
+
+def test_robust_covariance_scoring():
+    """Verify RobustCovariance Mahalanobis scoring."""
+    from src.ml.elliptic_envelope import RobustCovarianceDetector
+    model = RobustCovarianceDetector(contamination=0.03, n_components=6)
+    X_train = np.random.randn(300, 152)
+    model.fit(X_train)
+
+    assert model.is_fitted
+    scores = model.predict_score(X_train)
+    assert len(scores) == 300
+    assert np.all(scores >= 0.0) and np.all(scores <= 1.0)
+    risk = model.calculate_risk_score(X_train)
+    assert np.all(risk >= 0.0) and np.all(risk <= 100.0)
+
+def test_one_class_svm_scoring():
+    """Verify OneClassSVM RBF scoring."""
+    from src.ml.one_class_svm import OneClassSVMDetector
+    model = OneClassSVMDetector(nu=0.05, kernel="rbf")
+    X_train = np.random.randn(300, 152)
+    model.fit(X_train)
+
+    assert model.is_fitted
+    scores = model.predict_score(X_train)
+    assert len(scores) == 300
+    assert np.all(scores >= 0.0) and np.all(scores <= 1.0)
+

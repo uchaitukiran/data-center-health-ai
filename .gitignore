@@ -43,6 +43,7 @@ htmlcov/
 artifacts/checkpoints/
 *.tmp
 *.bak
+scratch/
 
 # IDE & OS
 .vscode/

@@ -1,0 +1,10 @@
+{
+  "status": "PASSED",
+  "machine_id": "machine-1-1",
+  "num_sensors": 38,
+  "train_samples": 24149,
+  "test_samples": 28479,
+  "anomaly_count": 2694,
+  "anomaly_ratio_pct": 9.46,
+  "zero_data_leakage_verified": true
+}

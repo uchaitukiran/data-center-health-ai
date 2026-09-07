@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Data Center Health AI | Enterprise AIOps 3D Digital Twin</title>
-  <meta name="description" content="Hyperscale AIOps 3D Digital Twin predicting server infrastructure failures with Machine Learning, LSTM Autoencoders, Groq Llama-3.3-70B RCA, and a live Three.js 3D server room dashboard.">
+  <meta name="description" content="Enterprise AIOps 3D Digital Twin predicting server infrastructure failures with Machine Learning, Groq Llama-3.3-70B RCA, and a live Three.js 3D server room dashboard.">
   
   <!-- Modern Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Custom Cyber NOC Stylesheet -->
+  <!-- Enterprise Light Theme Stylesheet -->
   <link rel="stylesheet" href="/css/style.css">
 
   <!-- Three.js ES Module Mapping -->
@@ -30,7 +30,7 @@
   <header class="top-navbar">
     <div class="brand-section">
       <div class="brand-logo-hex">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2.2">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2">
           <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
           <polyline points="2 17 12 22 22 17"></polyline>
           <polyline points="2 12 12 17 22 12"></polyline>
@@ -38,7 +38,16 @@
       </div>
       <div class="brand-titles">
         <h1 class="brand-title">Data Center Health AI</h1>
-        <span class="brand-sub">HYPERSCALE AIOPS DIGITAL TWIN // NOC EAST-1</span>
+        <span class="brand-sub">HYPERSCALE AIOPS DIGITAL TWIN // NOC COMMAND</span>
+      </div>
+      
+      <!-- Facility Switcher Dropdown Pill -->
+      <div class="facility-selector-wrapper">
+        <span class="facility-label">Facility:</span>
+        <select class="facility-select" id="facility-select">
+          <option value="dc-1">DC-1: Alpha Compute Hall (Primary)</option>
+          <option value="dc-2">DC-2: Beta Storage Hall (Redundant)</option>
+        </select>
       </div>
     </div>
 
@@ -57,16 +66,16 @@
         <span>Critical: <strong id="kpi-critical">0</strong></span>
       </div>
       <div class="kpi-chip">
-        <span>PUE: <strong id="kpi-pue" style="color: var(--neon-cyan);">1.18</strong></span>
+        <span>PUE: <strong id="kpi-pue" style="color: var(--color-sky);">1.18</strong></span>
       </div>
       <div class="kpi-chip">
-        <span>Cluster Risk: <strong id="kpi-mean-risk" style="color: var(--neon-emerald);">14.2%</strong></span>
+        <span>Cluster Risk: <strong id="kpi-mean-risk" style="color: var(--color-emerald);">14.2%</strong></span>
       </div>
     </div>
 
     <!-- Actions & Benchmark Trigger -->
     <div class="nav-actions">
-      <button class="btn-cyber" id="btn-benchmark-report">
+      <button class="btn-light-action" id="btn-benchmark-report">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="20" x2="18" y2="10"></line>
           <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -101,7 +110,7 @@
     <div>
       <div class="sidebar-section-title">
         <span>Camera Perspectives</span>
-        <span style="font-size: 0.65rem; color: var(--text-muted);">CINEMATIC</span>
+        <span style="font-size: 0.65rem; color: var(--text-muted);">STUDIO</span>
       </div>
       <div class="camera-grid">
         <button class="cam-btn active" data-cam="isometric">🎥 Isometric</button>
@@ -116,7 +125,7 @@
     <div>
       <div class="sidebar-section-title">
         <span>Live Failure Injection</span>
-        <span style="font-size: 0.65rem; color: var(--neon-amber);">SIMULATION</span>
+        <span style="font-size: 0.65rem; color: var(--color-amber);">SIMULATION</span>
       </div>
       <div class="sim-controls">
         <button class="btn-sim btn-sim-mem" id="btn-sim-mem">
@@ -138,7 +147,7 @@
     <div>
       <div class="sidebar-section-title">
         <span>Monitored Racks (42U)</span>
-        <span style="font-size: 0.65rem; color: var(--neon-emerald);" id="champion-indicator">CHAMPION: IF</span>
+        <span style="font-size: 0.65rem; color: var(--color-emerald);" id="champion-indicator">CHAMPION: IF</span>
       </div>
       <div class="rack-list" id="sidebar-rack-list">
         <!-- Filled dynamically by JavaScript -->
@@ -163,7 +172,7 @@
         <span class="radial-label" id="drawer-severity">NORMAL</span>
       </div>
       <div class="rack-quick-specs">
-        <div><span>NODE:</span> <strong id="drawer-node-id" style="color:#00d2ff;">machine-1-1</strong></div>
+        <div><span>NODE:</span> <strong id="drawer-node-id" style="color: var(--color-primary);">machine-1-1</strong></div>
         <div><span>AISLE:</span> <strong>Aisle 1 (Cold)</strong></div>
         <div><span>POWER:</span> <strong id="drawer-power">3.8 kW</strong></div>
         <div><span>FAN:</span> <strong id="drawer-fan">6200 RPM</strong></div>
@@ -194,7 +203,7 @@
     <div class="sparkline-container">
       <div class="sparkline-title">
         <span>REAL-TIME RISK & LOAD TIMELINE (30s)</span>
-        <span id="sparkline-live-val" style="color: var(--neon-cyan);">18%</span>
+        <span id="sparkline-live-val" style="color: var(--color-primary);">18%</span>
       </div>
       <canvas id="sparkline-canvas" width="370" height="64"></canvas>
     </div>
@@ -203,7 +212,7 @@
     <div class="groq-rca-card" id="drawer-rca-box" style="display: none;">
       <div class="rca-header-badge">
         <span class="rca-tag">⚡ Groq Llama-3.3-70B Incident Triage</span>
-        <span style="font-size: 0.65rem; color: var(--neon-rose); font-family: var(--font-mono);" id="rca-urgency">IMMEDIATE</span>
+        <span style="font-size: 0.65rem; color: var(--color-rose); font-family: var(--font-mono); font-weight: 700;" id="rca-urgency">IMMEDIATE</span>
       </div>
       <div class="rca-culprit" id="drawer-rca-culprit">Evaluating failure precursor...</div>
       <p class="rca-desc" id="drawer-rca-desc">Awaiting telemetry diagnostics.</p>
@@ -219,8 +228,8 @@
 
   <!-- Bottom Telemetry HUD Ticker -->
   <div class="bottom-ticker">
-    <div style="display: flex; gap: 16px; align-items: center;">
-      <span style="color: var(--neon-cyan);">LIVE SENSORS:</span>
+    <div style="display: flex; gap: 18px; align-items: center;">
+      <span style="color: var(--color-primary); font-weight: 700;">LIVE SENSORS:</span>
       <span>TCP Retrans: <strong id="ticker-tcp">0.02/s</strong></span>
       <span>Page Faults: <strong id="ticker-faults">12.4/s</strong></span>
       <span>Disk Queue: <strong id="ticker-queue">0.14</strong></span>
@@ -228,7 +237,7 @@
     </div>
     <div>
       <span style="color: var(--text-muted);">MODEL:</span>
-      <span style="color: var(--neon-emerald); font-weight: 700;">ISOLATION FOREST (0.018ms)</span>
+      <span style="color: var(--color-emerald); font-weight: 700;" id="ticker-champion">ISOLATION FOREST (0.018ms)</span>
     </div>
   </div>
 
@@ -237,23 +246,23 @@
     <div class="modal-card">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--neon-emerald);"></div>
-          <h3 style="font-size: 1.15rem; font-weight: 800; font-family: var(--font-mono);">MULTI-MODEL TOURNAMENT BENCHMARK & CHAMPION SELECTION</h3>
+          <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--color-emerald);"></div>
+          <h3 style="font-size: 1.15rem; font-weight: 800; font-family: var(--font-sans); color: var(--text-main);">MULTI-MODEL TOURNAMENT BENCHMARK & CHAMPION SELECTION</h3>
         </div>
         <button class="close-btn" id="modal-close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <p style="color: var(--text-sub); margin-bottom: 12px;">
+        <p style="color: var(--text-sub); margin-bottom: 14px; line-height: 1.5;">
           Empirical evaluation on the Server Machine Dataset (38 metrics &times; 28 servers) under strict zero-leakage splits (Train: 24,149, Val: 4,212, Test: 28,420).
-          The production champion was crowned via multi-objective operational ranking balancing <strong>Point-Adjusted F1 (PA-F1)</strong>, <strong>PR-AUC</strong>, and <strong>sub-10ms latency</strong>.
+          The production champion was selected via multi-objective operational ranking balancing <strong>Point-Adjusted F1 (PA-F1)</strong>, <strong>PR-AUC</strong>, and <strong>sub-20ms latency</strong>.
         </p>
         
         <div id="benchmark-table-container">
           <p>Loading candidate models comparison...</p>
         </div>
 
-        <h4 style="margin: 20px 0 10px 0; color: var(--neon-cyan); font-family: var(--font-mono); font-size: 0.95rem;">CHAMPION TECHNICAL RATIONALE</h4>
-        <div id="technical-report-content" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.06); padding: 18px; border-radius: 12px; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.55; white-space: pre-wrap; color: #cbd5e1;">
+        <h4 style="margin: 20px 0 10px 0; color: var(--color-primary); font-family: var(--font-sans); font-size: 0.95rem; font-weight: 800;">CHAMPION TECHNICAL RATIONALE</h4>
+        <div id="technical-report-content" style="background: #f8fafc; border: 1px solid var(--bg-panel-border); padding: 18px; border-radius: 12px; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.55; white-space: pre-wrap; color: var(--text-sub);">
           Loading full selection technical report...
         </div>
       </div>

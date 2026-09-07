@@ -29,6 +29,8 @@ class IsolationForestDetector(BaseAnomalyModel):
         self.contamination = contamination
         self.random_state = random_state
         self.model: Optional[IsolationForest] = None
+        self.score_min: float = -0.3
+        self.score_max: float = 0.5
 
     def fit(self, X: np.ndarray, y: Optional[np.ndarray] = None) -> "IsolationForestDetector":
         logger.info(
@@ -44,6 +46,10 @@ class IsolationForestDetector(BaseAnomalyModel):
         self.model.fit(X)
         self.is_fitted = True
 
+        raw_train = -self.model.decision_function(X)
+        self.score_min = float(raw_train.min())
+        self.score_max = float(raw_train.max())
+
         # Compute training baseline scores to calibrate initial threshold
         train_scores = self.predict_score(X)
         self.threshold = float(np.percentile(train_scores, 98.0))
@@ -51,7 +57,9 @@ class IsolationForestDetector(BaseAnomalyModel):
             "n_estimators": self.n_estimators,
             "max_samples": self.max_samples,
             "contamination": self.contamination,
-            "initial_threshold": self.threshold
+            "initial_threshold": self.threshold,
+            "score_min": self.score_min,
+            "score_max": self.score_max
         }
         logger.info(f"[IsolationForest] Fitted successfully. Baseline threshold: {self.threshold:.5f}")
         return self
@@ -60,14 +68,16 @@ class IsolationForestDetector(BaseAnomalyModel):
         """
         Calculates normalized continuous anomaly score in range [0, 1].
         scikit-learn decision_function returns negative values for outliers,
-        so score = -decision_function(X), then min-max normalized.
+        so score = -decision_function(X), calibrated against baseline distribution.
         """
         if not self.is_fitted or self.model is None:
             raise RuntimeError("IsolationForest model is not fitted yet.")
 
         # decision_function: lower is more anomalous
         raw_scores = -self.model.decision_function(X)
-        # Shift and scale to [0, 1] approximately
-        # Typical raw_scores range from -0.2 (normal) to 0.4+ (anomalies)
-        norm_scores = (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min() + 1e-8)
+        score_min = getattr(self, "score_min", -0.3)
+        score_max = getattr(self, "score_max", 0.5)
+        denom = (score_max - score_min) if (score_max - score_min) > 1e-6 else 1.0
+        norm_scores = np.clip((raw_scores - score_min) / denom, 0.0, 1.0)
         return norm_scores
+
