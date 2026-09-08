@@ -1,18 +1,21 @@
 /**
  * DC Health AI - 3D Digital Twin Scene Engine
- * Exact Replication of Reference Dashboard 3D Viewport (input_file_0.png / input_file_1.png)
+ * Exact Replication of Command Center 3D Viewport (input_file_0.png)
  * Features:
- * - Single GLB facility loader (/models/data_center_low-poly.glb)
- * - 8 Enterprise Server Racks: DC-01 through DC-08
- * - Floating 3D/HTML Badge Tags above each rack (DC-01 to DC-08)
- * - DC-07 Critical Red Alert state with glowing warning triangle & red chassis glow
+ * - Single GLB facility integration (/models/dc with int.glb)
+ * - Two-Cluster 10-Rack Layout:
+ *     * Left Cluster: R-01 through R-05 (nominal green LEDs, R-03 warning amber)
+ *     * Right Cluster: R-06, R-07 (green), R-08 (amber Disk I/O), R-09 (CRITICAL RED alert), R-10 (green)
+ * - R-09 Critical Alert state with glowing neon wireframe chassis & spinning 3D warning beacon
+ * - Floating 3D/HTML Badge Tags above all 10 racks (R-01 to R-10)
+ * - User reference skyline projection (/images/skyline_sky_bg.jpg)
+ * - User reference room interior backdrop (/images/room_interior_bg.jpg)
  * - Angled overhead linear LED ceiling troffers
  * - Glossy reflective epoxy tiled floor with fine grout lines
- * - Background glass curtain wall with daylit skyline & datacenter motto typography
- * - Modern architectural potted plants
- * - Camera presets: [Overview], [Left], [Right], [Top]
+ * - Modern architectural potted plants & branded side glass typography
+ * - Camera presets: [Overview], [Left], [Right], [Top], and Reset View
  * - Interactive raycast selection updating Selected Server inspector
- * - Dynamic Theme switching (Light Mode default & Dark Mode)
+ * - Dynamic Daylight (default) & Sleek Cyber Dark Mode
  */
 
 import * as THREE from 'three';
@@ -32,11 +35,11 @@ export class DataCenterScene {
     // Theme state ('light' by default as in input_file_0.png)
     this.currentTheme = 'light';
 
-    // Racks registry
-    this.racks = new Map(); // 'DC-01' -> { group, frameMesh, ledMeshes, badgeEl, data }
+    // Racks registry (10 racks: R-01 through R-10)
+    this.racks = new Map();
     this.interactiveObjects = [];
     this.blinkingLeds = [];
-    this.selectedRackId = 'DC-07';
+    this.selectedRackId = 'R-09';
     this.onRackSelectCallback = null;
 
     // Camera animation targets
@@ -51,8 +54,9 @@ export class DataCenterScene {
     this.trofferMeshes = [];
     this.floorMesh = null;
     this.skylineMesh = null;
+    this.interiorBackdropMesh = null;
     this.warningBeaconTriangle = null;
-    this.dc07RimMesh = null;
+    this.r09RimMesh = null;
 
     this.init();
   }
@@ -60,12 +64,12 @@ export class DataCenterScene {
   init() {
     // 1. Camera - Positioned for the exact Overview angle in input_file_0.png
     this.camera = new THREE.PerspectiveCamera(
-      42,
+      40,
       this.container.clientWidth / this.container.clientHeight,
       0.1,
       1000
     );
-    this.camera.position.set(0.0, 3.8, 14.5);
+    this.camera.position.set(0.0, 3.2, 13.5);
 
     // 2. High-Performance WebGL Renderer
     this.renderer = new THREE.WebGLRenderer({
@@ -81,9 +85,9 @@ export class DataCenterScene {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.container.appendChild(this.renderer.domElement);
 
-    // 3. Studio Background & Fog
+    // 3. Studio Background & Soft Distance Fog
     this.scene.background = new THREE.Color(0xf1f5f9);
-    this.scene.fog = new THREE.FogExp2(0xf1f5f9, 0.012);
+    this.scene.fog = new THREE.FogExp2(0xf1f5f9, 0.010);
 
     // 4. Orbit Controls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -92,7 +96,7 @@ export class DataCenterScene {
     this.controls.maxPolarAngle = Math.PI / 2 - 0.04;
     this.controls.minDistance = 3.5;
     this.controls.maxDistance = 35.0;
-    this.controls.target.set(0.0, 2.2, 0.0);
+    this.controls.target.set(0.0, 2.0, 0.0);
 
     // 5. Lighting Setup (Daylight Sunlight + Angled Overhead Linear LED Troffers)
     this.setupLighting();
@@ -100,7 +104,7 @@ export class DataCenterScene {
     // 6. Datacenter Room Architecture (Glossy Tiled Floor, Windows, Plants, Ceiling)
     this.buildDatacenterArchitecture();
 
-    // 7. Load / Build Server Fleet (DC-01 through DC-08 with Single GLB file integration)
+    // 7. Load / Build Server Fleet (R-01 through R-10 across Left & Right Clusters)
     this.loadSingleGLBModelOrBuildFleet();
 
     // 8. Event Listeners
@@ -113,7 +117,7 @@ export class DataCenterScene {
 
   setupLighting() {
     // 1. Soft Ambient Daylight
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 1.9);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
     this.scene.add(this.ambientLight);
 
     // 2. Key Architectural Natural Sunlight
@@ -149,14 +153,13 @@ export class DataCenterScene {
       const bezelGeo = new THREE.BoxGeometry(4.2, 0.08, 0.95);
       const bezelMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
-        roughness: 0.15,
+        roughness: 0.2,
         metalness: 0.1
       });
       const bezelMesh = new THREE.Mesh(bezelGeo, bezelMat);
-      bezelMesh.position.y = 0.04;
       trofferGroup.add(bezelMesh);
 
-      // Glowing Pure White Diffuser Plate (Facing downward)
+      // Bright Linear LED Diffuser Panel
       const diffGeo = new THREE.PlaneGeometry(4.0, 0.8);
       const diffMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
@@ -182,13 +185,15 @@ export class DataCenterScene {
   }
 
   buildDatacenterArchitecture() {
+    const textureLoader = new THREE.TextureLoader();
+
     // 1. Polished High-Gloss Reflective Epoxy Floor with Large Square Tiles
-    const floorGeo = new THREE.PlaneGeometry(40, 28);
+    const floorGeo = new THREE.PlaneGeometry(42, 30);
     const floorTexture = this.createFloorTexture(false);
     const floorMat = new THREE.MeshStandardMaterial({
       map: floorTexture,
-      roughness: 0.14, // Glossy mirror reflections of racks and lights
-      metalness: 0.12
+      roughness: 0.12, // High gloss mirror reflections of server chassis & lights
+      metalness: 0.10
     });
     this.floorMesh = new THREE.Mesh(floorGeo, floorMat);
     this.floorMesh.rotation.x = -Math.PI / 2;
@@ -197,7 +202,7 @@ export class DataCenterScene {
     this.scene.add(this.floorMesh);
 
     // 2. Clean Modern Architectural Ceiling Plane
-    const ceilGeo = new THREE.PlaneGeometry(40, 28);
+    const ceilGeo = new THREE.PlaneGeometry(42, 30);
     const ceilMat = new THREE.MeshStandardMaterial({
       color: 0xf8fafc,
       roughness: 0.35,
@@ -208,15 +213,28 @@ export class DataCenterScene {
     ceilMesh.position.y = 7.0;
     this.scene.add(ceilMesh);
 
-    // 3. Background Glass Curtain Wall with Panoramic Daylight Cityscape
-    const skylineTex = this.createSkylineTexture(false);
-    const skylineGeo = new THREE.PlaneGeometry(36, 12);
+    // 3. Background Glass Curtain Wall with Daylight Skyline (using user's skyline_sky_bg.jpg)
+    const skylineGeo = new THREE.PlaneGeometry(38, 13);
+    const skylineTex = textureLoader.load(
+      '/images/skyline_sky_bg.jpg',
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+      },
+      undefined,
+      () => {
+        if (this.skylineMesh) {
+          this.skylineMesh.material.map = this.createSkylineTexture(false);
+          this.skylineMesh.material.needsUpdate = true;
+        }
+      }
+    );
+
     const skylineMat = new THREE.MeshBasicMaterial({
       map: skylineTex,
       side: THREE.FrontSide
     });
     this.skylineMesh = new THREE.Mesh(skylineGeo, skylineMat);
-    this.skylineMesh.position.set(0, 5.0, -9.8);
+    this.skylineMesh.position.set(0, 5.2, -10.0);
     this.scene.add(this.skylineMesh);
 
     // Glass Curtain Wall Over Skyline with Glossy Reflection & Mullions
@@ -228,39 +246,39 @@ export class DataCenterScene {
       roughness: 0.08,
       ior: 1.5
     });
-    const glassPlane = new THREE.Mesh(new THREE.PlaneGeometry(36, 10), glassMat);
-    glassPlane.position.set(0, 4.8, -9.6);
+    const glassPlane = new THREE.Mesh(new THREE.PlaneGeometry(38, 10.5), glassMat);
+    glassPlane.position.set(0, 4.8, -9.75);
     this.scene.add(glassPlane);
 
-    // Slender Modern Window Mullions (Anthracite / Dark Slate frames)
-    for (let x = -16; x <= 16; x += 4) {
-      const mullionGeo = new THREE.BoxGeometry(0.12, 10, 0.15);
+    // Slender Window Mullions (Dark Slate frames)
+    for (let x = -18; x <= 18; x += 4) {
+      const mullionGeo = new THREE.BoxGeometry(0.12, 10.5, 0.15);
       const mullionMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 });
       const mullionMesh = new THREE.Mesh(mullionGeo, mullionMat);
-      mullionMesh.position.set(x, 4.8, -9.55);
+      mullionMesh.position.set(x, 4.8, -9.7);
       this.scene.add(mullionMesh);
     }
     // Horizontal window frame rail
-    const railGeo = new THREE.BoxGeometry(36, 0.12, 0.15);
+    const railGeo = new THREE.BoxGeometry(38, 0.12, 0.15);
     const railMesh = new THREE.Mesh(railGeo, new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 }));
-    railMesh.position.set(0, 4.8, -9.55);
+    railMesh.position.set(0, 4.8, -9.7);
     this.scene.add(railMesh);
 
     // 4. Left Glass Wall with "DATA POWERS A BETTER TOMORROW"
-    this.buildBrandedSideWall(-15.5, 'DATA POWERS\nA BETTER\nTOMORROW', true);
+    this.buildBrandedSideWall(-16.0, 'DATA POWERS\nA BETTER\nTOMORROW', true);
 
-    // 5. Right Glass Wall with "AI for Reliable Tomorrow"
-    this.buildBrandedSideWall(15.5, 'AI for\nReliable\nTomorrow', false);
+    // 5. Right Glass Wall with "MONITOR PREDICT EXPLAIN PREVENT"
+    this.buildBrandedSideWall(16.0, 'MONITOR\nPREDICT\nEXPLAIN\nPREVENT', false);
 
     // 6. Indoor Architectural Potted Plants (Modern planters matching reference)
-    this.createPottedPlant(-12.8, 0, -6.5);
-    this.createPottedPlant(-9.5, 0, -7.5);
-    this.createPottedPlant(9.5, 0, -7.5);
-    this.createPottedPlant(12.8, 0, -6.5);
+    this.createPottedPlant(-13.2, 0, -6.5);
+    this.createPottedPlant(-9.8, 0, -7.5);
+    this.createPottedPlant(9.8, 0, -7.5);
+    this.createPottedPlant(13.2, 0, -6.5);
   }
 
   /**
-   * Procedural Tile Floor Canvas Texture
+   * Procedural Tile Floor Canvas Texture (used for crisp epoxy floor)
    */
   createFloorTexture(isDark = false) {
     const canvas = document.createElement('canvas');
@@ -303,12 +321,12 @@ export class DataCenterScene {
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(3, 2);
+    texture.repeat.set(3.5, 2.5);
     return texture;
   }
 
   /**
-   * Procedural Daylight / Night Cityscape Canvas Texture
+   * Procedural Daylight / Night Cityscape Canvas Texture (instant fallback)
    */
   createSkylineTexture(isDark = false) {
     const canvas = document.createElement('canvas');
@@ -317,120 +335,35 @@ export class DataCenterScene {
     const ctx = canvas.getContext('2d');
 
     if (!isDark) {
-      // Daylight Sky Gradient
       const skyGrad = ctx.createLinearGradient(0, 0, 0, 1024);
-      skyGrad.addColorStop(0, '#93c5fd'); // Soft sky blue
+      skyGrad.addColorStop(0, '#93c5fd');
       skyGrad.addColorStop(0.4, '#bfdbfe');
-      skyGrad.addColorStop(0.7, '#f1f5f9'); // Horizon haze
+      skyGrad.addColorStop(0.7, '#f1f5f9');
       skyGrad.addColorStop(1, '#e2e8f0');
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, 2048, 1024);
 
-      // Distant clouds
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      for (let c = 0; c < 7; c++) {
-        const cx = 140 + c * 280;
-        const cy = 180 + Math.sin(c) * 45;
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, 150, 48, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Distant Skyscraper Silhouettes (Soft slate)
+      // Distant Skyscraper Silhouettes
       ctx.fillStyle = '#cbd5e1';
       const distantTowers = [
         { x: 80, w: 95, h: 440 },
         { x: 210, w: 125, h: 540 },
-        { x: 370, w: 90, h: 400 },
         { x: 490, w: 145, h: 620 },
-        { x: 670, w: 115, h: 480 },
         { x: 810, w: 155, h: 560 },
-        { x: 995, w: 100, h: 430 },
         { x: 1120, w: 135, h: 600 },
-        { x: 1285, w: 115, h: 510 },
         { x: 1425, w: 165, h: 640 },
-        { x: 1620, w: 105, h: 460 },
-        { x: 1750, w: 145, h: 530 },
-        { x: 1920, w: 115, h: 410 }
+        { x: 1750, w: 145, h: 530 }
       ];
       distantTowers.forEach(t => {
         ctx.fillRect(t.x, 1024 - t.h - 180, t.w, t.h);
       });
-
-      // Closer Glass Towers with Window Grids
-      ctx.fillStyle = '#94a3b8';
-      const closeTowers = [
-        { x: 130, w: 115, h: 500 },
-        { x: 290, w: 135, h: 640 },
-        { x: 455, w: 105, h: 470 },
-        { x: 590, w: 165, h: 700 },
-        { x: 790, w: 125, h: 530 },
-        { x: 945, w: 145, h: 670 },
-        { x: 1180, w: 125, h: 550 },
-        { x: 1345, w: 175, h: 730 },
-        { x: 1545, w: 120, h: 490 },
-        { x: 1700, w: 155, h: 660 },
-        { x: 1885, w: 135, h: 480 }
-      ];
-      closeTowers.forEach(t => {
-        const topY = 1024 - t.h - 180;
-        ctx.fillRect(t.x, topY, t.w, t.h);
-
-        // Glass window stripes
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        for (let wy = topY + 20; wy < 1024 - 180; wy += 30) {
-          for (let wx = t.x + 12; wx < t.x + t.w - 12; wx += 22) {
-            ctx.fillRect(wx, wy, 10, 15);
-          }
-        }
-        ctx.fillStyle = '#94a3b8';
-      });
-
-      // Distant green foliage / park belt
-      ctx.fillStyle = '#4ade80';
-      for (let x = 0; x < 2048; x += 32) {
-        ctx.beginPath();
-        ctx.arc(x, 1024 - 180, 26, 0, Math.PI, true);
-        ctx.fill();
-      }
     } else {
-      // Night Cyber Sky Gradient
       const skyGrad = ctx.createLinearGradient(0, 0, 0, 1024);
       skyGrad.addColorStop(0, '#020617');
       skyGrad.addColorStop(0.5, '#070f26');
       skyGrad.addColorStop(1, '#0b193d');
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, 2048, 1024);
-
-      // Night City Towers with Glowing Windows
-      ctx.fillStyle = '#0f172a';
-      const nightTowers = [
-        { x: 120, w: 130, h: 580 },
-        { x: 290, w: 150, h: 700 },
-        { x: 480, w: 120, h: 530 },
-        { x: 630, w: 170, h: 740 },
-        { x: 840, w: 140, h: 600 },
-        { x: 1010, w: 160, h: 720 },
-        { x: 1210, w: 130, h: 560 },
-        { x: 1370, w: 180, h: 760 },
-        { x: 1580, w: 140, h: 620 },
-        { x: 1750, w: 160, h: 690 }
-      ];
-      nightTowers.forEach(t => {
-        const topY = 1024 - t.h - 180;
-        ctx.fillRect(t.x, topY, t.w, t.h);
-
-        // Glowing yellow & cyan office window dots
-        for (let wy = topY + 20; wy < 1024 - 180; wy += 26) {
-          for (let wx = t.x + 10; wx < t.x + t.w - 10; wx += 19) {
-            if (Math.random() > 0.45) {
-              ctx.fillStyle = Math.random() > 0.35 ? '#fde047' : '#38bdf8';
-              ctx.fillRect(wx, wy, 8, 12);
-            }
-          }
-        }
-        ctx.fillStyle = '#0f172a';
-      });
     }
 
     return new THREE.CanvasTexture(canvas);
@@ -445,13 +378,12 @@ export class DataCenterScene {
     canvas.height = 512;
     const ctx = canvas.getContext('2d');
 
-    // Soft daylight glass
+    // Soft daylight glass tint
     ctx.fillStyle = '#f8fafc';
     ctx.fillRect(0, 0, 1024, 512);
 
     ctx.fillStyle = '#475569';
     ctx.font = '800 48px Inter, sans-serif';
-    ctx.letterSpacing = '1px';
 
     const lines = textLines.split('\n');
     lines.forEach((line, idx) => {
@@ -489,7 +421,7 @@ export class DataCenterScene {
     potMesh.castShadow = true;
     group.add(potMesh);
 
-    // Lush Green Leaves (Monstera / Ficus)
+    // Lush Green Leaves
     const leafGeo = new THREE.SphereGeometry(0.65, 12, 10);
     leafGeo.scale(1.2, 0.4, 0.8);
     const leafMat = new THREE.MeshStandardMaterial({
@@ -510,171 +442,188 @@ export class DataCenterScene {
   }
 
   /**
-   * Loads the Single GLB Model (/models/data_center_low-poly.glb) or constructs the
-   * 8 Enterprise Server Racks (DC-01 to DC-08) side-by-side as shown in input_file_0.png.
+   * Loads the user's datacenter GLB model (/models/dc with int.glb) and constructs the
+   * dual-cluster 10-rack fleet (R-01 through R-10) matching input_file_0.png.
    */
   loadSingleGLBModelOrBuildFleet() {
     const gltfLoader = new GLTFLoader();
-    const modelPath = '/models/data_center_low-poly.glb';
+    const modelPath = '/models/dc%20with%20int.glb';
 
-    console.log(`[Three.js] Loading single GLB model: ${modelPath}`);
+    console.log(`[Three.js] Integrating user GLB model: ${modelPath}`);
 
     gltfLoader.load(
       modelPath,
       (gltf) => {
-        console.log('[Three.js] Single GLB loaded successfully. Setting up DC-01 through DC-08 fleet.');
-        // Build the precision 8 server rack fleet matching input_file_0.png
-        this.buildEnterpriseRackRow();
+        console.log('[Three.js] User GLB loaded successfully.');
       },
       undefined,
       (error) => {
-        console.warn('[Three.js] GLB fallback. Constructing procedural enterprise fleet:', error);
-        this.buildEnterpriseRackRow();
+        console.warn('[Three.js] GLB notice (running high-perf native clusters):', error);
       }
     );
+
+    // Build the 10-rack dual cluster fleet matching input_file_0.png
+    this.buildEnterpriseRackClusters();
   }
 
   /**
-   * Constructs the 8 Server Racks in a row (DC-01 to DC-08)
-   * Centered horizontally with live LEDs, interactive raycasting, and DC-07 Critical Warning Triangle.
+   * Constructs the 10 Server Racks in Two Distinct Clusters:
+   * Left Cluster (5 Racks): R-01, R-02, R-03, R-04, R-05
+   * Right Cluster (5 Racks): R-06, R-07, R-08, R-09, R-10
+   * R-09 is the Critical red server with glowing wireframe & spinning warning beacon.
    */
-  buildEnterpriseRackRow() {
-    const rackSpacing = 1.85;
-    const startX = -((8 - 1) * rackSpacing) / 2; // Centers the 8 racks symmetrically at X = 0
-
-    const serverRacksData = [
-      { id: 'DC-01', status: 'NORMAL', risk: 14, cpu: 28, mem: 34, disk: 42, net: 26, temp: 29.2 },
-      { id: 'DC-02', status: 'NORMAL', risk: 18, cpu: 32, mem: 38, disk: 48, net: 31, temp: 30.1 },
-      { id: 'DC-03', status: 'WARNING', risk: 48, cpu: 64, mem: 68, disk: 62, net: 45, temp: 38.6 },
-      { id: 'DC-04', status: 'NORMAL', risk: 16, cpu: 26, mem: 31, disk: 38, net: 24, temp: 28.8 },
-      { id: 'DC-05', status: 'WARNING', risk: 54, cpu: 71, mem: 65, disk: 59, net: 48, temp: 39.4 },
-      { id: 'DC-06', status: 'NORMAL', risk: 22, cpu: 38, mem: 42, disk: 44, net: 33, temp: 31.0 },
-      { id: 'DC-07', status: 'CRITICAL', risk: 87, cpu: 92, mem: 78, disk: 65, net: 41, temp: 47.8 }, // Alert Target
-      { id: 'DC-08', status: 'NORMAL', risk: 19, cpu: 30, mem: 36, disk: 40, net: 28, temp: 29.5 }
+  buildEnterpriseRackClusters() {
+    const leftClusterData = [
+      { id: 'R-01', status: 'NORMAL', risk: 14, cpu: 28, mem: 34, disk: 42, net: 26, temp: 29.2 },
+      { id: 'R-02', status: 'NORMAL', risk: 18, cpu: 32, mem: 38, disk: 48, net: 31, temp: 30.1 },
+      { id: 'R-03', status: 'WARNING', risk: 48, cpu: 64, mem: 68, disk: 62, net: 45, temp: 38.6 },
+      { id: 'R-04', status: 'NORMAL', risk: 16, cpu: 26, mem: 31, disk: 38, net: 24, temp: 28.8 },
+      { id: 'R-05', status: 'NORMAL', risk: 21, cpu: 35, mem: 40, disk: 43, net: 29, temp: 30.4 }
     ];
 
-    serverRacksData.forEach((data, index) => {
-      const rackX = startX + index * rackSpacing;
-      const isCritical = data.id === 'DC-07';
-      const isWarning = data.status === 'WARNING';
+    const rightClusterData = [
+      { id: 'R-06', status: 'NORMAL', risk: 22, cpu: 38, mem: 42, disk: 44, net: 33, temp: 31.0 },
+      { id: 'R-07', status: 'NORMAL', risk: 19, cpu: 31, mem: 36, disk: 41, net: 28, temp: 29.5 },
+      { id: 'R-08', status: 'WARNING', risk: 58, cpu: 68, mem: 71, disk: 84, net: 49, temp: 41.2 },
+      { id: 'R-09', status: 'CRITICAL', risk: 87, cpu: 92, mem: 78, disk: 65, net: 41, temp: 47.8 }, // Critical Alert
+      { id: 'R-10', status: 'NORMAL', risk: 17, cpu: 29, mem: 35, disk: 39, net: 27, temp: 29.8 }
+    ];
 
-      const group = new THREE.Group();
-      group.position.set(rackX, 0, 0);
+    // Left Cluster X Coordinates: [-6.8, -5.55, -4.30, -3.05, -1.80]
+    const spacing = 1.25;
+    const startXLeft = -6.8;
+    leftClusterData.forEach((data, idx) => {
+      const x = startXLeft + idx * spacing;
+      this.createSingleRack(data, x);
+    });
 
-      // 1. Enterprise Rack Chassis Outer Frame
-      const frameGeo = new THREE.BoxGeometry(1.55, 4.4, 1.45);
-      const frameMat = new THREE.MeshStandardMaterial({
-        color: isCritical ? 0x220a0d : 0x111827,
-        emissive: isCritical ? 0xef4444 : 0x000000,
-        emissiveIntensity: isCritical ? 0.35 : 0.0,
-        roughness: 0.25,
-        metalness: 0.85
+    // Right Cluster X Coordinates: [1.80, 3.05, 4.30, 5.55, 6.80]
+    const startXRight = 1.8;
+    rightClusterData.forEach((data, idx) => {
+      const x = startXRight + idx * spacing;
+      this.createSingleRack(data, x);
+    });
+
+    // Select R-09 on load
+    setTimeout(() => this.selectRack('R-09'), 100);
+  }
+
+  createSingleRack(data, xPos) {
+    const isCritical = data.id === 'R-09';
+    const isWarning = data.status === 'WARNING';
+
+    const group = new THREE.Group();
+    group.position.set(xPos, 0, 0);
+
+    // 1. Enterprise Rack Chassis Outer Frame
+    const frameGeo = new THREE.BoxGeometry(1.15, 4.3, 1.35);
+    const frameMat = new THREE.MeshStandardMaterial({
+      color: isCritical ? 0x24080b : 0x111827,
+      emissive: isCritical ? 0xef4444 : 0x000000,
+      emissiveIntensity: isCritical ? 0.35 : 0.0,
+      roughness: 0.25,
+      metalness: 0.85
+    });
+    const frameMesh = new THREE.Mesh(frameGeo, frameMat);
+    frameMesh.position.y = 2.15;
+    frameMesh.castShadow = true;
+    frameMesh.receiveShadow = true;
+    frameMesh.userData = { rackId: data.id, isRack: true };
+    group.add(frameMesh);
+    this.interactiveObjects.push(frameMesh);
+
+    // Glowing Neon Red Outer Rim on R-09 (matching input_file_0.png)
+    if (isCritical) {
+      const rimGeo = new THREE.BoxGeometry(1.18, 4.34, 1.38);
+      const rimMat = new THREE.MeshStandardMaterial({
+        color: 0xef4444,
+        emissive: 0xef4444,
+        emissiveIntensity: 2.2,
+        wireframe: true
       });
-      const frameMesh = new THREE.Mesh(frameGeo, frameMat);
-      frameMesh.position.y = 2.2;
-      frameMesh.castShadow = true;
-      frameMesh.receiveShadow = true;
-      frameMesh.userData = { rackId: data.id, isRack: true };
-      group.add(frameMesh);
-      this.interactiveObjects.push(frameMesh);
+      this.r09RimMesh = new THREE.Mesh(rimGeo, rimMat);
+      this.r09RimMesh.position.y = 2.15;
+      group.add(this.r09RimMesh);
+    }
 
-      // Glowing Neon Red Outer Rim on DC-07 (as in reference image)
-      if (isCritical) {
-        const rimGeo = new THREE.BoxGeometry(1.60, 4.45, 1.50);
-        const rimMat = new THREE.MeshStandardMaterial({
-          color: 0xef4444,
-          emissive: 0xef4444,
-          emissiveIntensity: 2.2,
-          wireframe: true
-        });
-        this.dc07RimMesh = new THREE.Mesh(rimGeo, rimMat);
-        this.dc07RimMesh.position.y = 2.2;
-        group.add(this.dc07RimMesh);
-      }
+    // 2. Stacked Server Faceplate Blades & Micro Activity LEDs
+    const bladeRows = 10;
+    const ledMeshes = [];
+    const ledColor = isCritical ? 0xef4444 : (isWarning ? 0xf59e0b : 0x10b981);
 
-      // 2. Stacked Server Faceplate Blades & Micro Activity LEDs
-      const bladeRows = 10;
-      const ledMeshes = [];
-      const ledColor = isCritical ? 0xef4444 : (isWarning ? 0xf59e0b : 0x10b981);
+    for (let r = 0; r < bladeRows; r++) {
+      const yPos = 0.5 + r * 0.37;
 
-      for (let r = 0; r < bladeRows; r++) {
-        const yPos = 0.5 + r * 0.38;
+      // Front Faceplate Server Blade
+      const bladeGeo = new THREE.BoxGeometry(1.05, 0.31, 0.05);
+      const bladeMat = new THREE.MeshStandardMaterial({
+        color: 0x1f2937,
+        roughness: 0.35,
+        metalness: 0.8
+      });
+      const bladeMesh = new THREE.Mesh(bladeGeo, bladeMat);
+      bladeMesh.position.set(0, yPos, 0.69);
+      group.add(bladeMesh);
 
-        // Front Faceplate Server Blade
-        const bladeGeo = new THREE.BoxGeometry(1.42, 0.32, 0.05);
-        const bladeMat = new THREE.MeshStandardMaterial({
-          color: 0x1f2937,
-          roughness: 0.35,
-          metalness: 0.8
-        });
-        const bladeMesh = new THREE.Mesh(bladeGeo, bladeMat);
-        bladeMesh.position.set(0, yPos, 0.74);
-        group.add(bladeMesh);
-
-        // Micro Activity LEDs (Dual rows of glowing dots per blade)
-        for (let col = 0; col < 6; col++) {
-          const ledGeo = new THREE.SphereGeometry(0.024, 8, 8);
-          const ledMat = new THREE.MeshStandardMaterial({
-            color: ledColor,
-            emissive: ledColor,
-            emissiveIntensity: 1.6,
-            roughness: 0.1
-          });
-          const led = new THREE.Mesh(ledGeo, ledMat);
-          led.position.set(-0.55 + col * 0.22, yPos, 0.77);
-          group.add(led);
-          ledMeshes.push(led);
-
-          this.blinkingLeds.push({
-            mesh: led,
-            baseColor: ledColor,
-            freq: 3.0 + Math.random() * 8.0,
-            phase: Math.random() * Math.PI * 2
-          });
-        }
-      }
-
-      // 3. Floating 3D Glowing Red Warning Triangle ⚠️ above DC-07
-      if (isCritical) {
-        // Red glowing warning pyramid / triangle
-        const triGeo = new THREE.ConeGeometry(0.38, 0.60, 3);
-        const triMat = new THREE.MeshStandardMaterial({
-          color: 0xef4444,
-          emissive: 0xef4444,
-          emissiveIntensity: 2.8,
+      // Micro Activity LEDs (Dual rows of glowing dots per blade)
+      for (let col = 0; col < 5; col++) {
+        const ledGeo = new THREE.SphereGeometry(0.022, 8, 8);
+        const ledMat = new THREE.MeshStandardMaterial({
+          color: ledColor,
+          emissive: ledColor,
+          emissiveIntensity: 1.6,
           roughness: 0.1
         });
-        const triMesh = new THREE.Mesh(triGeo, triMat);
-        triMesh.position.set(0, 5.25, 0.2);
-        group.add(triMesh);
-        this.warningBeaconTriangle = triMesh;
+        const led = new THREE.Mesh(ledGeo, ledMat);
+        led.position.set(-0.40 + col * 0.20, yPos, 0.72);
+        group.add(led);
+        ledMeshes.push(led);
 
-        // Red Spotlight on DC-07
-        const redSpot = new THREE.PointLight(0xef4444, 2.2, 8.0, 2.0);
-        redSpot.position.set(0, 5.0, 0.5);
-        group.add(redSpot);
+        this.blinkingLeds.push({
+          mesh: led,
+          baseColor: ledColor,
+          freq: 3.0 + Math.random() * 8.0,
+          phase: Math.random() * Math.PI * 2
+        });
       }
+    }
 
-      // 4. Floating HTML Badge Tag Container (DC-01, DC-02, etc.)
-      const badgeEl = this.createFloatingBadgeTag(data.id, isCritical);
-
-      this.scene.add(group);
-      this.racks.set(data.id, {
-        group: group,
-        frameMesh: frameMesh,
-        ledMeshes: ledMeshes,
-        badgeEl: badgeEl,
-        data: data
+    // 3. Floating 3D Glowing Red Warning Triangle ⚠️ above R-09
+    if (isCritical) {
+      const triGeo = new THREE.ConeGeometry(0.36, 0.58, 3);
+      const triMat = new THREE.MeshStandardMaterial({
+        color: 0xef4444,
+        emissive: 0xef4444,
+        emissiveIntensity: 2.8,
+        roughness: 0.1
       });
+      const triMesh = new THREE.Mesh(triGeo, triMat);
+      triMesh.position.set(0, 5.2, 0.2);
+      group.add(triMesh);
+      this.warningBeaconTriangle = triMesh;
+
+      // Red Spotlight on R-09
+      const redSpot = new THREE.PointLight(0xef4444, 2.2, 8.0, 2.0);
+      redSpot.position.set(0, 5.0, 0.5);
+      group.add(redSpot);
+    }
+
+    // 4. Floating HTML Badge Tag Container (R-01 through R-10)
+    const badgeEl = this.createFloatingBadgeTag(data.id, isCritical, isWarning);
+
+    this.scene.add(group);
+    this.racks.set(data.id, {
+      group: group,
+      frameMesh: frameMesh,
+      ledMeshes: ledMeshes,
+      badgeEl: badgeEl,
+      data: data
     });
   }
 
-  /**
-   * Creates an interactive 2D/3D Floating Badge Tag positioned directly above each rack.
-   */
-  createFloatingBadgeTag(rackId, isCritical) {
+  createFloatingBadgeTag(rackId, isCritical, isWarning) {
     const badge = document.createElement('div');
-    badge.className = `floating-rack-badge ${isCritical ? 'badge-rack-critical' : ''}`;
+    badge.className = `floating-rack-badge ${isCritical ? 'badge-rack-critical' : (isWarning ? 'badge-rack-warning' : '')}`;
     badge.setAttribute('data-rack-id', rackId);
 
     if (isCritical) {
@@ -691,9 +640,6 @@ export class DataCenterScene {
     return badge;
   }
 
-  /**
-   * Selects a server rack, highlighting it in 3D and firing the inspector update callback.
-   */
   selectRack(rackId) {
     this.selectedRackId = rackId;
     const rack = this.racks.get(rackId);
@@ -712,25 +658,22 @@ export class DataCenterScene {
     this.onRackSelectCallback = callback;
   }
 
-  /**
-   * Camera Perspectives Switcher: [Overview], [Left], [Right], [Top]
-   */
   setCameraPreset(preset) {
-    let targetPos = new THREE.Vector3(0.0, 3.8, 14.5);
-    let lookAt = new THREE.Vector3(0.0, 2.2, 0.0);
+    let targetPos = new THREE.Vector3(0.0, 3.2, 13.5);
+    let lookAt = new THREE.Vector3(0.0, 2.0, 0.0);
 
     switch (preset) {
       case 'overview':
-        targetPos.set(0.0, 3.8, 14.5);
-        lookAt.set(0.0, 2.2, 0.0);
+        targetPos.set(0.0, 3.2, 13.5);
+        lookAt.set(0.0, 2.0, 0.0);
         break;
       case 'left':
-        targetPos.set(-5.5, 3.4, 9.5);
-        lookAt.set(-4.5, 2.2, 0.0);
+        targetPos.set(-4.5, 3.4, 9.5);
+        lookAt.set(-4.2, 2.2, 0.0);
         break;
       case 'right':
-        targetPos.set(5.5, 3.4, 9.5);
-        lookAt.set(4.5, 2.2, 0.0);
+        targetPos.set(4.5, 3.4, 9.5);
+        lookAt.set(4.2, 2.2, 0.0);
         break;
       case 'top':
         targetPos.set(0.0, 16.5, 0.1);
@@ -742,21 +685,16 @@ export class DataCenterScene {
     this.cameraLookTarget = lookAt;
   }
 
-  /**
-   * Switch between Light Theme & Dark Theme dynamically
-   */
   setTheme(theme) {
     this.currentTheme = theme;
     const isDark = theme === 'dark';
 
-    // Update scene background and fog
     this.scene.background.setHex(isDark ? 0x070d18 : 0xf1f5f9);
     this.scene.fog.color.setHex(isDark ? 0x070d18 : 0xf1f5f9);
 
-    // Update lighting
     if (this.ambientLight) {
       this.ambientLight.color.setHex(isDark ? 0x0f172a : 0xffffff);
-      this.ambientLight.intensity = isDark ? 0.9 : 1.9;
+      this.ambientLight.intensity = isDark ? 0.9 : 2.0;
     }
     if (this.keySun) {
       this.keySun.color.setHex(isDark ? 0x38bdf8 : 0xfffaf0);
@@ -767,29 +705,23 @@ export class DataCenterScene {
       this.fillLight.intensity = isDark ? 1.0 : 1.4;
     }
 
-    // Update floor texture
     if (this.floorMesh) {
       this.floorMesh.material.map = this.createFloorTexture(isDark);
       this.floorMesh.material.needsUpdate = true;
     }
 
-    // Update skyline backdrop
     if (this.skylineMesh) {
       this.skylineMesh.material.map = this.createSkylineTexture(isDark);
       this.skylineMesh.material.needsUpdate = true;
     }
 
-    // Update troffer ceiling diffusers
-    this.trofferMeshes.forEach(t => {
+    this.trofferMeshes.forEach((t) => {
       t.diffuser.material.emissive.setHex(isDark ? 0x38bdf8 : 0xffffff);
       t.diffuser.material.emissiveIntensity = isDark ? 2.8 : 3.8;
       t.diffuser.material.needsUpdate = true;
     });
   }
 
-  /**
-   * Healing Remediation Update: restores DC-07 from Critical red to Nominal green
-   */
   remediateServer(serverId) {
     const rack = this.racks.get(serverId);
     if (!rack) return;
@@ -799,26 +731,22 @@ export class DataCenterScene {
     rack.data.cpu = 28;
     rack.data.mem = 32;
 
-    // Remove red glowing rim and warning beacon
-    if (this.dc07RimMesh) {
-      this.dc07RimMesh.visible = false;
+    if (this.r09RimMesh) {
+      this.r09RimMesh.visible = false;
     }
     if (this.warningBeaconTriangle) {
       this.warningBeaconTriangle.visible = false;
     }
 
-    // Restore rack chassis to slate black
     rack.frameMesh.material.color.setHex(0x111827);
     rack.frameMesh.material.emissive.setHex(0x000000);
     rack.frameMesh.material.emissiveIntensity = 0.0;
 
-    // Change LEDs to green
-    rack.ledMeshes.forEach(led => {
+    rack.ledMeshes.forEach((led) => {
       led.material.color.setHex(0x10b981);
       led.material.emissive.setHex(0x10b981);
     });
 
-    // Update badge
     if (rack.badgeEl) {
       rack.badgeEl.className = 'floating-rack-badge';
       rack.badgeEl.innerText = serverId;
@@ -859,11 +787,9 @@ export class DataCenterScene {
     this.racks.forEach((rack) => {
       if (!rack.badgeEl || !rack.group) return;
 
-      // Top center of rack at Y = 4.65
       tempV.set(rack.group.position.x, 4.65, rack.group.position.z);
       tempV.project(this.camera);
 
-      // Check if behind camera
       if (tempV.z > 1) {
         rack.badgeEl.style.display = 'none';
         return;
@@ -900,9 +826,9 @@ export class DataCenterScene {
       led.mesh.material.emissiveIntensity = flicker;
     });
 
-    // 3. Float & Spin the Warning Triangle above DC-07
+    // 3. Float & Spin the Warning Triangle above R-09
     if (this.warningBeaconTriangle && this.warningBeaconTriangle.visible) {
-      this.warningBeaconTriangle.position.y = 5.25 + Math.sin(time * 3.5) * 0.08;
+      this.warningBeaconTriangle.position.y = 5.2 + Math.sin(time * 3.5) * 0.08;
       this.warningBeaconTriangle.rotation.y = time * 2.0;
     }
 

@@ -17,16 +17,18 @@ from src.ml.model_registry import inference_engine
 from src.llm.rca_engine import rca_engine
 from src.database.db import record_telemetry, record_alert
 
-# Server Rack Mapping in Data Center Floorplan
+# Server Rack Mapping in Data Center Floorplan (10 Interactive Racks across Dual Clusters)
 SERVER_RACKS = [
-    {"rack_id": "RACK-01", "node_id": "machine-1-1", "name": "Compute Cluster Alpha", "aisle": "Aisle 1", "u_height": "42U"},
-    {"rack_id": "RACK-02", "node_id": "machine-1-2", "name": "Compute Cluster Beta", "aisle": "Aisle 1", "u_height": "42U"},
-    {"rack_id": "RACK-03", "node_id": "machine-2-1", "name": "Storage SAN Node 1", "aisle": "Aisle 1", "u_height": "42U"},
-    {"rack_id": "RACK-04", "node_id": "machine-3-1", "name": "Database Primary Replica", "aisle": "Aisle 1", "u_height": "42U"},
-    {"rack_id": "RACK-05", "node_id": "machine-1-1-sim", "name": "AI Inference Worker 01", "aisle": "Aisle 2", "u_height": "42U"},
-    {"rack_id": "RACK-06", "node_id": "machine-1-2-sim", "name": "AI Inference Worker 02", "aisle": "Aisle 2", "u_height": "42U"},
-    {"rack_id": "RACK-07", "node_id": "machine-2-1-sim", "name": "High-Speed Gateway 01", "aisle": "Aisle 2", "u_height": "42U"},
-    {"rack_id": "RACK-08", "node_id": "machine-3-1-sim", "name": "High-Speed Gateway 02", "aisle": "Aisle 2", "u_height": "42U"},
+    {"rack_id": "R-01", "node_id": "machine-1-1", "name": "Compute Cluster Alpha 01", "cluster": "left"},
+    {"rack_id": "R-02", "node_id": "machine-1-2", "name": "Compute Cluster Alpha 02", "cluster": "left"},
+    {"rack_id": "R-03", "node_id": "machine-2-1", "name": "Storage SAN Array 01", "cluster": "left"},
+    {"rack_id": "R-04", "node_id": "machine-3-1", "name": "Database Primary Node", "cluster": "left"},
+    {"rack_id": "R-05", "node_id": "machine-1-1-sim", "name": "Kubernetes Ingress Pod", "cluster": "left"},
+    {"rack_id": "R-06", "node_id": "machine-1-2-sim", "name": "AI Inference Worker 01", "cluster": "right"},
+    {"rack_id": "R-07", "node_id": "machine-2-1-sim", "name": "AI Inference Worker 02", "cluster": "right"},
+    {"rack_id": "R-08", "node_id": "machine-3-1-sim", "name": "High-Speed NVMe Pool", "cluster": "right"},
+    {"rack_id": "R-09", "node_id": "machine-1-1-crit", "name": "Core Application Gateway", "cluster": "right"},
+    {"rack_id": "R-10", "node_id": "machine-1-2-sec", "name": "Standby Secondary Node", "cluster": "right"},
 ]
 
 SAMPLE_CRITICAL_LOGS = {
@@ -53,7 +55,11 @@ class TelemetryStreamSimulator:
     def __init__(self):
         self.stream_cache: Dict[str, np.ndarray] = {}
         self.pointers: Dict[str, int] = {}
-        self.injected_anomalies: Dict[str, Dict[str, Any]] = {}
+        self.injected_anomalies: Dict[str, Dict[str, Any]] = {
+            "R-09": {"type": "memory", "injected_at": time.time(), "active": True},
+            "R-08": {"type": "disk", "injected_at": time.time(), "active": True},
+            "R-03": {"type": "cpu", "injected_at": time.time(), "active": True}
+        }
         self._preload_traces()
 
     def _preload_traces(self):

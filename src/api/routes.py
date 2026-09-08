@@ -124,7 +124,7 @@ def simulate_anomaly():
     """Triggers simulated failure on a rack for live triage demonstration."""
     from src.api.ws_stream import simulator
     data = request.get_json(force=True) or {}
-    rack_id = data.get("rack_id", "RACK-01")
+    rack_id = data.get("rack_id", "R-09")
     anomaly_type = data.get("type", "memory")
     simulator.inject_simulation(rack_id, anomaly_type)
     return jsonify({"status": "injected", "rack_id": rack_id, "type": anomaly_type})
@@ -134,6 +134,6 @@ def simulate_remediate():
     """Remediates simulated anomaly and restores rack to normal health."""
     from src.api.ws_stream import simulator
     data = request.get_json(force=True) or {}
-    rack_id = data.get("rack_id", "RACK-01")
+    rack_id = data.get("rack_id", "R-09")
     simulator.remediate_rack(rack_id)
     return jsonify({"status": "remediated", "rack_id": rack_id})
