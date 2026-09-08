@@ -78,6 +78,36 @@ export class AudioManager {
     }
   }
 
+  playHealChime() {
+    if (this.isMuted) return;
+    this.ensureContext();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const notes = [440, 554.37, 659.25, 880]; // A4 Major Arpeggio
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+        gain.gain.setValueAtTime(0.001, now + idx * 0.08);
+        gain.gain.linearRampToValueAtTime(0.18, now + idx * 0.08 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.5);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.55);
+      });
+    } catch (e) {
+      console.warn('Audio chime error:', e);
+    }
+  }
+
   startAlarm() {
     if (this.alarmInterval) return;
     this.ensureContext();

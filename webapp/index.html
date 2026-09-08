@@ -94,10 +94,10 @@
 
       <!-- User Profile Pill -->
       <div class="user-profile-badge">
-        <div class="profile-avatar">CM</div>
+        <div class="profile-avatar">CK</div>
         <div class="profile-meta">
-          <span class="profile-name">Chaitu Maya</span>
-          <span class="profile-role">AI Ops Engineer</span>
+          <span class="profile-name">Chaitanya Kiran</span>
+          <span class="profile-role">AI Ops Lead / ML Engineer</span>
         </div>
       </div>
 
@@ -187,13 +187,19 @@
       </div>
 
       <!-- System Live Pill -->
-      <div class="system-live-pill">
-        <div class="status-indicator-dot"></div>
+      <div class="system-live-pill" id="system-live-pill">
+        <div class="status-indicator-dot" id="system-status-dot"></div>
         <div class="live-pill-text">
-          <span class="live-title">System Live</span>
-          <span class="live-sub">All systems operational</span>
+          <span class="live-title" id="system-live-title">System Live</span>
+          <span class="live-sub" id="system-live-sub">All systems operational</span>
         </div>
       </div>
+
+      <!-- Test Alert Simulation Button -->
+      <button class="test-alert-action-btn" id="btn-test-alert" title="Click to test real-time server anomaly alert & siren">
+        <span class="test-btn-icon">⚡</span>
+        <span class="test-btn-text">Test Alert Simulation</span>
+      </button>
     </div>
   </section>
 
@@ -328,10 +334,10 @@
 
           <!-- Camera Perspectives Pills -->
           <div class="camera-pill-group">
-            <button class="cam-pill-btn active" data-cam="overview">Overview</button>
-            <button class="cam-pill-btn" data-cam="left">Left</button>
-            <button class="cam-pill-btn" data-cam="right">Right</button>
-            <button class="cam-pill-btn" data-cam="top">Top</button>
+            <button class="cam-pill-btn active" data-cam="overview" title="Full Datacenter Room Overview">Overview</button>
+            <button class="cam-pill-btn" data-cam="left" title="Inspect Left Cluster R-01 to R-05">Left Racks</button>
+            <button class="cam-pill-btn" data-cam="right" title="Inspect Right Cluster R-06 to R-10">Right Racks</button>
+            <button class="cam-pill-btn" data-cam="r09" title="Zoom to Critical Alert Rack R-09">Focus R-09</button>
             <button class="icon-pill-btn" id="btn-fullscreen" title="Toggle Fullscreen">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
@@ -345,11 +351,9 @@
 
         <!-- Bottom Controls Pill -->
         <div class="viewport-bottom-pill">
-          <span class="pill-item">🖱️ Rotate</span>
+          <span class="pill-item">🖱️ Rotate Left / Right</span>
           <span class="pill-divider">&bull;</span>
-          <span class="pill-item">🔍 Zoom</span>
-          <span class="pill-divider">&bull;</span>
-          <span class="pill-item">✋ Pan</span>
+          <span class="pill-item">🔍 Zoom In / Out</span>
           <span class="pill-divider">&bull;</span>
           <span class="pill-item pill-reset" id="btn-reset-view">🔄 Reset View</span>
         </div>
@@ -621,11 +625,9 @@
         </div>
 
         <!-- Action Button -->
-        <button class="btn-execute-remediate" id="btn-remediate">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-          </svg>
-          Ask AI for more details
+        <button class="btn-execute-remediate" id="btn-remediate" title="Trigger automated failover and service restart">
+          <span class="btn-remediate-icon">⚡</span>
+          <span>Execute Auto-Remediation</span>
         </button>
       </div>
 

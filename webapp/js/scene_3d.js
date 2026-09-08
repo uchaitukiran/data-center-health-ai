@@ -1,27 +1,34 @@
 /**
- * DC Health AI - 3D Digital Twin Scene Engine
- * Exact Replication using User's GLB Model (/models/dc with int.glb)
- * and User Reference Images (/images/user_sky_panoramic.png, /images/user_room_interior.png)
+ * DC Health AI - Command Center Digital Twin Engine
+ * High-Fidelity Photorealistic 3D Datacenter Room
  *
- * Features:
- * - Direct loading and integration of /models/dc with int.glb
- * - 10-Rack dual-cluster layout matching Blender scenes and reference images:
- *     * Left Cluster (Node 9): R-01 through R-05 (nominal green LEDs, R-03 warning amber)
- *     * Right Cluster (Node 28): R-06, R-07 (green), R-08 (amber Disk I/O), R-09 (CRITICAL RED alert), R-10 (green)
- * - Industrial overhead ceiling pipes, ventilation ducts, and hanging lamps from dc with int.glb
- * - R-09 Critical Alert state with glowing neon wireframe chassis rim & spinning 3D warning pyramid beacon
- * - Floating 3D/HTML Badge Tags hovering above all 10 racks (R-01 to R-10)
- * - User reference skyline projection (/images/user_sky_panoramic.png) through panoramic windows
- * - User reference room interior walls ("DATA POWERS A BETTER TOMORROW" / "MONITOR PREDICT EXPLAIN PREVENT")
- * - High-gloss reflective epoxy floor reflecting server LEDs and daylight
- * - Camera presets: [Overview], [Left Cluster], [Right Cluster], [Top Down], and Zoom Controls
- * - Interactive raycast selection updating Selected Server inspector
- * - Dynamic Daylight (default) & Sleek Cyber Dark Mode
+ * Architecture:
+ * 1. Daylight Room Environment:
+ *    - Uses user's daylight sky (/images/sky.png) as background
+ *    - Uses user's interior room (/images/int.png) with panoramic glass windows & wall typography
+ * 2. Real 3D Server Fleet (10 Racks in 2 Clusters):
+ *    - Left Cluster: R-01, R-02, R-03, R-04, R-05
+ *    - Right Cluster: R-06, R-07, R-08, R-09, R-10
+ *    - Realistic PBR server chassis, blade faceplates, and emissive activity LEDs
+ *    - R-09 Critical Alert: Intense glowing red LEDs, pulsing alert halo, red emergency point light,
+ *      and spinning 3D holographic warning beacon
+ *    - R-03 & R-08 Warning: Amber warning LEDs
+ * 3. Unreal Engine Daylight Illumination:
+ *    - Directional sunlight casting specular highlights on rack tops and floor
+ *    - High-dynamic-range ACESFilmic tone mapping
+ *    - Specular reflections of server rack LEDs on the glossy floor
+ * 4. Constrained Camera Controls:
+ *    - Left & Right rotation (azimuth orbit)
+ *    - Smooth Zoom In & Zoom Out
+ *    - Polar angle clamped strictly at eye level (never flips or dips under floor)
+ * 5. Interactive 3D Fleet:
+ *    - 10 floating badges tracking 3D racks in screen space
+ *    - Raycasting click selection
+ *    - One-click auto-remediation transforms R-09 to healthy green
  */
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 export class DataCenterScene {
   constructor(containerId) {
@@ -33,575 +40,544 @@ export class DataCenterScene {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
 
-    // Theme state ('light' by default as requested: "make day only")
-    this.currentTheme = 'light';
-
-    // Racks registry (10 racks: R-01 through R-10)
     this.racks = new Map();
     this.interactiveObjects = [];
-    this.blinkingGlbLeds = [];
     this.selectedRackId = 'R-09';
     this.onRackSelectCallback = null;
 
-    // Camera animation targets
-    this.cameraTargetPos = null;
-    this.cameraLookTarget = null;
+    // 3D Objects
+    this.roomMesh = null;
+    this.skyMesh = null;
+    this.floorReflector = null;
+    this.racksGroup = null;
+    this.r09HaloMesh = null;
+    this.r09Light = null;
+    this.warningBeacon = null;
 
-    // GLB Model references
-    this.glbContainer = null;
-    this.glbModel = null;
-    this.r09RimMesh = null;
-    this.warningBeaconTriangle = null;
-    this.r09SpotLight = null;
-
-    // Architecture & Lights References for Theme Switching
-    this.ambientLight = null;
-    this.keySun = null;
-    this.fillLight = null;
-    this.ceilingLights = [];
-    this.trofferMeshes = [];
-    this.floorMesh = null;
-    this.skylineMesh = null;
+    // Animation state
+    this.clock = new THREE.Clock();
+    this.isAlertActive = true;
+    this.animatingCamera = false;
 
     this.init();
   }
 
   init() {
-    // 1. Camera - Positioned for the exact cinematic Overview framing both clusters symmetrically
-    this.camera = new THREE.PerspectiveCamera(
-      42,
-      this.container.clientWidth / this.container.clientHeight,
-      0.1,
-      1000
-    );
-    this.camera.position.set(0.0, 4.4, 21.0);
+    const w = this.container.clientWidth || 800;
+    const h = this.container.clientHeight || 500;
 
-    // 2. High-Performance WebGL Renderer
+    // 1. Camera: Positioned inside room at eye level looking forward
+    this.camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 1000);
+    this.camera.position.set(0, 0.35, 9.2);
+
+    // 2. High-Fidelity WebGL Renderer
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
-      powerPreference: 'high-performance',
-      alpha: false
+      alpha: true,
+      powerPreference: 'high-performance'
     });
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+    this.renderer.setSize(w, h);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.30;
+    this.renderer.toneMappingExposure = 1.15;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.container.appendChild(this.renderer.domElement);
 
-    // 3. Studio Background & Soft Distance Fog
-    this.scene.background = new THREE.Color(0xf1f5f9);
-    this.scene.fog = new THREE.FogExp2(0xf1f5f9, 0.007);
-
-    // 4. Orbit Controls
+    // 3. Orbit Controls: Left/Right rotation only, Zoom In/Out only
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.04;
-    this.controls.minDistance = 4.0;
-    this.controls.maxDistance = 50.0;
-    this.controls.target.set(0.0, 2.0, 1.0);
+    this.controls.dampingFactor = 0.06;
+    this.controls.target.set(0, -0.15, 0);
 
-    // 5. Lighting Setup (Natural Daylight Sunlight + Overhead Linear LED Troffers)
+    // Lock polar angle strictly around eye level (approx 74° to 90°)
+    this.controls.minPolarAngle = 1.28;
+    this.controls.maxPolarAngle = 1.57;
+
+    // Azimuth bounds: broad left/right viewing without disorienting flip
+    this.controls.minAzimuthAngle = -Math.PI / 3.2;
+    this.controls.maxAzimuthAngle = Math.PI / 3.2;
+
+    // Zoom limits
+    this.controls.minDistance = 3.5;
+    this.controls.maxDistance = 14.0;
+
+    // 4. Unreal Engine Daylight Lighting
     this.setupLighting();
 
-    // 6. Datacenter Room Architecture (Glossy Tiled Floor, User Reference Skyline, Side Walls)
-    this.buildDatacenterArchitecture();
+    // 5. Build Room & Panoramic Sky Environment
+    this.buildRoomEnvironment();
 
-    // 7. Load and Integrate user's GLB Model (/models/dc with int.glb)
-    this.loadUserGLBModel();
+    // 6. Build High-Fidelity 3D Server Racks Fleet
+    this.buildServerRacks();
 
-    // 8. Build 10 Server Rack Hitboxes & Badges (R-01 through R-10)
-    this.build10RackFleet();
-
-    // 9. Event Listeners
+    // 7. Event Listeners
     window.addEventListener('resize', () => this.onWindowResize());
     this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
 
-    // 10. Render Loop
+    // 8. Animation Loop
     this.animate();
   }
 
+  /**
+   * Sets up bright, clean daylight illumination matching the user's reference
+   */
   setupLighting() {
-    // 1. Soft Ambient Daylight
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 2.4);
+    // Ambient daylight fill
+    this.ambientLight = new THREE.AmbientLight(0xf1f5f9, 2.2);
     this.scene.add(this.ambientLight);
 
-    // 2. Key Architectural Natural Sunlight (Casting soft shadows)
-    this.keySun = new THREE.DirectionalLight(0xfffaf0, 2.8);
-    this.keySun.position.set(15, 25, 20);
-    this.keySun.castShadow = true;
-    this.keySun.shadow.mapSize.width = 2048;
-    this.keySun.shadow.mapSize.height = 2048;
-    this.keySun.shadow.bias = -0.0005;
-    this.scene.add(this.keySun);
+    // Main directional sunlight from window / sky direction
+    this.sunLight = new THREE.DirectionalLight(0xfffbeb, 2.6);
+    this.sunLight.position.set(6, 14, 10);
+    this.sunLight.castShadow = true;
+    this.sunLight.shadow.mapSize.width = 2048;
+    this.sunLight.shadow.mapSize.height = 2048;
+    this.sunLight.shadow.camera.near = 0.5;
+    this.sunLight.shadow.camera.far = 50;
+    this.sunLight.shadow.bias = -0.0005;
+    this.scene.add(this.sunLight);
 
-    // 3. Front Face Fill Light to brightly illuminate server blade faceplates
-    const frontFill = new THREE.DirectionalLight(0xffffff, 1.6);
-    frontFill.position.set(0, 8, 22);
-    this.scene.add(frontFill);
+    // Secondary sky bounce light
+    const skyBounce = new THREE.DirectionalLight(0xbae6fd, 1.4);
+    skyBounce.position.set(-8, 10, -5);
+    this.scene.add(skyBounce);
 
-    // 4. Sky Fill Light
-    this.fillLight = new THREE.DirectionalLight(0xdbeafe, 1.4);
-    this.fillLight.position.set(-16, 18, -12);
-    this.scene.add(this.fillLight);
-
-    // 5. Overhead Recessed Linear LED Troffers (Angled rows across ceiling)
-    const trofferCoords = [
-      [-6.5, 7.6, 6.0, 0.22],
-      [-2.2, 7.6, 5.0, 0.10],
-      [2.2, 7.6, 5.0, -0.10],
-      [6.5, 7.6, 6.0, -0.22],
-      [-5.0, 7.6, 0.5, 0.08],
-      [5.0, 7.6, 0.5, -0.08]
-    ];
-
-    trofferCoords.forEach(([tx, ty, tz, rotY]) => {
-      const trofferGroup = new THREE.Group();
-      trofferGroup.position.set(tx, ty, tz);
-      trofferGroup.rotation.y = rotY;
-
-      // Clean White / Silver Recessed Frame Bezel
-      const bezelGeo = new THREE.BoxGeometry(4.2, 0.08, 0.95);
-      const bezelMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0.2,
-        metalness: 0.1
-      });
-      const bezelMesh = new THREE.Mesh(bezelGeo, bezelMat);
-      trofferGroup.add(bezelMesh);
-
-      // Bright Linear LED Diffuser Panel
-      const diffGeo = new THREE.PlaneGeometry(4.0, 0.8);
-      const diffMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        emissive: 0xffffff,
-        emissiveIntensity: 3.5,
-        roughness: 0.05,
-        side: THREE.DoubleSide
-      });
-      const diffMesh = new THREE.Mesh(diffGeo, diffMat);
-      diffMesh.rotation.x = Math.PI / 2;
-      diffMesh.position.y = -0.01;
-      trofferGroup.add(diffMesh);
-
-      // Soft Downward Illumination onto Racks
-      const pLight = new THREE.PointLight(0xffffff, 1.4, 18.0, 1.4);
-      pLight.position.y = -0.4;
-      trofferGroup.add(pLight);
-
-      this.scene.add(trofferGroup);
-      this.ceilingLights.push(pLight);
-      this.trofferMeshes.push({ bezel: bezelMesh, diffuser: diffMesh });
-    });
+    // Dedicated pulsing red emergency light over R-09
+    this.r09Light = new THREE.PointLight(0xef4444, 4.0, 6.0, 1.5);
+    this.r09Light.position.set(2.45, 0.8, 0.5);
+    this.scene.add(this.r09Light);
   }
 
-  buildDatacenterArchitecture() {
+  /**
+   * Builds the datacenter room interior using int.png and sky.png
+   */
+  buildRoomEnvironment() {
     const textureLoader = new THREE.TextureLoader();
 
-    // 1. Polished High-Gloss Reflective Epoxy Floor with Large Square Tiles
-    const floorGeo = new THREE.PlaneGeometry(55, 45);
-    const floorTexture = this.createFloorTexture(false);
-    const floorMat = new THREE.MeshStandardMaterial({
-      map: floorTexture,
-      roughness: 0.24, // Clean soft reflection of server chassis & lights
-      metalness: 0.05
+    // 1. Panoramic Sky in background
+    textureLoader.load('/images/sky.png', (skyTex) => {
+      skyTex.colorSpace = THREE.SRGBColorSpace;
+      const skyGeo = new THREE.PlaneGeometry(36, 18);
+      const skyMat = new THREE.MeshBasicMaterial({
+        map: skyTex,
+        depthWrite: false
+      });
+      this.skyMesh = new THREE.Mesh(skyGeo, skyMat);
+      this.skyMesh.position.set(0, 2.2, -6.5);
+      this.scene.add(this.skyMesh);
     });
-    this.floorMesh = new THREE.Mesh(floorGeo, floorMat);
-    this.floorMesh.rotation.x = -Math.PI / 2;
-    this.floorMesh.position.y = 0.0;
-    this.floorMesh.receiveShadow = true;
-    this.scene.add(this.floorMesh);
 
-    // 2. Background Panoramic Glass Windows with User's Reference Skyline (/images/user_sky_panoramic.png)
-    const skylineGeo = new THREE.PlaneGeometry(52, 18);
-    const skylineTex = textureLoader.load(
-      '/images/user_sky_panoramic.png',
-      (tex) => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-      },
-      undefined,
-      () => {
-        if (this.skylineMesh) {
-          this.skylineMesh.material.map = this.createSkylineTexture(false);
-          this.skylineMesh.material.needsUpdate = true;
+    // 2. Interior Room Stage using int.png (with transparent window alpha blending or crisp projection)
+    textureLoader.load('/images/int.png', (roomTex) => {
+      roomTex.colorSpace = THREE.SRGBColorSpace;
+      const vFOV = THREE.MathUtils.degToRad(this.camera.fov);
+      const planeH = 2 * Math.tan(vFOV / 2) * 9.2;
+      const planeW = planeH * this.camera.aspect;
+
+      const roomGeo = new THREE.PlaneGeometry(planeW, planeH);
+      const roomMat = new THREE.MeshBasicMaterial({
+        map: roomTex,
+        depthWrite: false
+      });
+      this.roomMesh = new THREE.Mesh(roomGeo, roomMat);
+      this.roomMesh.position.set(0, 0, 0);
+      this.scene.add(this.roomMesh);
+    });
+
+    // 3. Glossy Specular Floor Plane reflecting rack chassis and LEDs
+    const floorGeo = new THREE.PlaneGeometry(16, 8);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0xe2e8f0,
+      roughness: 0.18,
+      metalness: 0.35,
+      transparent: true,
+      opacity: 0.32
+    });
+    this.floorReflector = new THREE.Mesh(floorGeo, floorMat);
+    this.floorReflector.rotation.x = -Math.PI / 2;
+    this.floorReflector.position.set(0, -1.45, 0.5);
+    this.scene.add(this.floorReflector);
+  }
+
+  /**
+   * Builds 10 High-Fidelity 3D Server Racks in 2 Clusters
+   * Left Cluster: R-01 to R-05 | Right Cluster: R-06 to R-10
+   */
+  buildServerRacks() {
+    this.racksGroup = new THREE.Group();
+    this.scene.add(this.racksGroup);
+
+    const racksConfig = [
+      // Left Cluster (R-01 .. R-05)
+      { id: 'R-01', status: 'NORMAL', x: -3.55, z: 0.0, bladeCount: 8 },
+      { id: 'R-02', status: 'NORMAL', x: -2.80, z: 0.0, bladeCount: 8 },
+      { id: 'R-03', status: 'WARNING', x: -2.05, z: 0.0, bladeCount: 8 },
+      { id: 'R-04', status: 'NORMAL', x: -1.30, z: 0.0, bladeCount: 8 },
+      { id: 'R-05', status: 'NORMAL', x: -0.55, z: 0.0, bladeCount: 8 },
+      // Right Cluster (R-06 .. R-10)
+      { id: 'R-06', status: 'NORMAL', x: 0.55, z: 0.0, bladeCount: 8 },
+      { id: 'R-07', status: 'NORMAL', x: 1.30, z: 0.0, bladeCount: 8 },
+      { id: 'R-08', status: 'WARNING', x: 2.05, z: 0.0, bladeCount: 8 },
+      { id: 'R-09', status: 'CRITICAL', x: 2.70, z: 0.0, bladeCount: 8 },
+      { id: 'R-10', status: 'NORMAL', x: 3.35, z: 0.0, bladeCount: 8 }
+    ];
+
+    // Shared Materials
+    const chassisMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      metalness: 0.85,
+      roughness: 0.25
+    });
+
+    const frontGrilleMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      metalness: 0.9,
+      roughness: 0.4
+    });
+
+    const greenLedMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+    const amberLedMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+    const redLedMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+
+    racksConfig.forEach((cfg) => {
+      const rackGroup = new THREE.Group();
+      rackGroup.position.set(cfg.x, -0.35, cfg.z);
+
+      // 1. Rack Cabinet Body
+      const bodyW = 0.62;
+      const bodyH = 2.15;
+      const bodyD = 0.95;
+      const bodyGeo = new THREE.BoxGeometry(bodyW, bodyH, bodyD);
+      const bodyMesh = new THREE.Mesh(bodyGeo, chassisMat);
+      bodyMesh.castShadow = true;
+      bodyMesh.receiveShadow = true;
+      rackGroup.add(bodyMesh);
+
+      // 2. Recessed Front Faceplate Frame
+      const faceGeo = new THREE.PlaneGeometry(bodyW * 0.92, bodyH * 0.95);
+      const faceMesh = new THREE.Mesh(faceGeo, frontGrilleMat);
+      faceMesh.position.set(0, 0, bodyD / 2 + 0.005);
+      rackGroup.add(faceMesh);
+
+      // 3. Server Blades & Activity LEDs
+      const bladeHeight = (bodyH * 0.92) / cfg.bladeCount;
+      const ledsArray = [];
+
+      for (let b = 0; b < cfg.bladeCount; b++) {
+        const bladeY = (bodyH * 0.92) / 2 - (b + 0.5) * bladeHeight;
+
+        // Blade separator line
+        const lineGeo = new THREE.PlaneGeometry(bodyW * 0.88, 0.015);
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0x334155 });
+        const lineMesh = new THREE.Mesh(lineGeo, lineMat);
+        lineMesh.position.set(0, bladeY - bladeHeight / 2, bodyD / 2 + 0.01);
+        rackGroup.add(lineMesh);
+
+        // LED Indicators (2 columns: activity & power)
+        let ledMat = greenLedMat;
+        if (cfg.id === 'R-09') ledMat = redLedMat;
+        else if (cfg.status === 'WARNING') ledMat = amberLedMat;
+
+        for (let col = 0; col < 2; col++) {
+          const ledGeo = new THREE.PlaneGeometry(0.025, 0.035);
+          const ledMesh = new THREE.Mesh(ledGeo, ledMat);
+          const ledX = (col === 0 ? -1 : 1) * (bodyW * 0.32);
+          ledMesh.position.set(ledX, bladeY, bodyD / 2 + 0.015);
+          rackGroup.add(ledMesh);
+          ledsArray.push(ledMesh);
         }
       }
-    );
 
-    const skylineMat = new THREE.MeshBasicMaterial({
-      map: skylineTex,
-      side: THREE.FrontSide
-    });
-    this.skylineMesh = new THREE.Mesh(skylineGeo, skylineMat);
-    this.skylineMesh.position.set(0, 7.2, -15.0);
-    this.scene.add(this.skylineMesh);
-
-    // Glass Curtain Wall Over Skyline with Glossy Reflection & Mullions
-    const glassMat = new THREE.MeshPhysicalMaterial({
-      color: 0xe0f2fe,
-      transmission: 0.85,
-      opacity: 1.0,
-      transparent: true,
-      roughness: 0.08,
-      ior: 1.5
-    });
-    const glassPlane = new THREE.Mesh(new THREE.PlaneGeometry(52, 15.0), glassMat);
-    glassPlane.position.set(0, 6.2, -14.6);
-    this.scene.add(glassPlane);
-
-    // Slender Window Mullions (Dark Slate frames)
-    for (let x = -25; x <= 25; x += 5.0) {
-      const mullionGeo = new THREE.BoxGeometry(0.14, 15.0, 0.15);
-      const mullionMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 });
-      const mullionMesh = new THREE.Mesh(mullionGeo, mullionMat);
-      mullionMesh.position.set(x, 6.2, -14.5);
-      this.scene.add(mullionMesh);
-    }
-    // Horizontal window frame rail
-    const railGeo = new THREE.BoxGeometry(52, 0.14, 0.15);
-    const railMesh = new THREE.Mesh(railGeo, new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 }));
-    railMesh.position.set(0, 6.2, -14.5);
-    this.scene.add(railMesh);
-
-    // 3. Left Wall with "DATA POWERS A BETTER TOMORROW" (matching user_room_interior.png)
-    this.buildBrandedSideWall(-20.0, 'DATA POWERS\nA BETTER\nTOMORROW', true);
-
-    // 4. Right Wall with "MONITOR PREDICT EXPLAIN PREVENT" (matching user_room_interior.png)
-    this.buildBrandedSideWall(20.0, 'MONITOR\nPREDICT\nEXPLAIN\nPREVENT', false);
-
-    // 5. Indoor Architectural Potted Plants (matching user's reference images)
-    this.createPottedPlant(-16.0, 0, -4.0);
-    this.createPottedPlant(-13.0, 0, -7.0);
-    this.createPottedPlant(13.0, 0, -7.0);
-    this.createPottedPlant(16.0, 0, -4.0);
-  }
-
-  /**
-   * Loads the user's GLB Model (/models/dc with int.glb) containing the dual clusters,
-   * server faceplates, activity LEDs, industrial ceiling pipes, and roof architecture.
-   */
-  loadUserGLBModel() {
-    const gltfLoader = new GLTFLoader();
-    const modelPath = '/models/dc%20with%20int.glb';
-
-    console.log(`[Three.js] Loading user datacenter model from ${modelPath}`);
-
-    gltfLoader.load(
-      modelPath,
-      (gltf) => {
-        console.log('[Three.js] User GLB loaded successfully:', gltf);
-        this.glbModel = gltf.scene;
-
-        // Container group to scale and center dc with int.glb
-        // Bounding box: Center X=21.54, Y=7.92, Z=0.49. Scale=0.25 makes rack height ~4.0m
-        this.glbContainer = new THREE.Group();
-        this.glbContainer.scale.set(0.25, 0.25, 0.25);
-        this.glbContainer.position.set(-21.54 * 0.25, 0, -0.49 * 0.25);
-        this.glbContainer.add(this.glbModel);
-
-        // Enhance materials and hide any exterior facade that blocks the interior camera
-        this.glbModel.traverse((child) => {
-          if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-
-            const n = child.name || '';
-            const mn = (child.material && child.material.name) ? child.material.name : '';
-
-            // Hide the solid exterior concrete facade walls & flat floor of the GLB
-            // so our high-res panoramic sky window, branded walls, and glossy floor shine through!
-            if (n.includes('090') || n.includes('091') || n.includes('092') || n.includes('088') || n.includes('089') ||
-                mn === 'PisoBranco.001' || (mn === 'Wall_Pipes' && (n.includes('Cube') || n.includes('026')))) {
-              child.visible = false;
-            }
-
-            // Material tuning
-            if (child.material) {
-              const matName = child.material.name || '';
-              if (matName.includes('Verde')) {
-                // Green Activity LEDs
-                child.material.emissive = new THREE.Color(0x22c55e);
-                child.material.emissiveIntensity = 2.8;
-                this.blinkingGlbLeds.push(child);
-              } else if (matName.includes('Amarelo')) {
-                // Amber Warning LEDs
-                child.material.emissive = new THREE.Color(0xf59e0b);
-                child.material.emissiveIntensity = 2.8;
-                this.blinkingGlbLeds.push(child);
-              } else if (matName.includes('MetalCase')) {
-                child.material.metalness = 0.88;
-                child.material.roughness = 0.22;
-              } else if (matName.includes('Frente')) {
-                child.material.roughness = 0.32;
-              }
-            }
-          }
+      // 4. Critical Alert Halo on R-09
+      if (cfg.id === 'R-09') {
+        const haloGeo = new THREE.BoxGeometry(bodyW + 0.12, bodyH + 0.12, bodyD + 0.12);
+        const haloMat = new THREE.MeshBasicMaterial({
+          color: 0xef4444,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.45
         });
+        this.r09HaloMesh = new THREE.Mesh(haloGeo, haloMat);
+        rackGroup.add(this.r09HaloMesh);
 
-        this.scene.add(this.glbContainer);
-        console.log('[Three.js] Added dc with int.glb to scene');
-      },
-      (xhr) => {
-        const percent = Math.round((xhr.loaded / xhr.total) * 100);
-        console.log(`[Three.js] Loading GLB: ${percent}%`);
-      },
-      (error) => {
-        console.warn('[Three.js] GLB notice (running high-perf fallback clusters):', error);
+        // 3D Spinning Holographic Alert Beacon
+        const beaconGeo = new THREE.ConeGeometry(0.18, 0.32, 4);
+        const beaconMat = new THREE.MeshStandardMaterial({
+          color: 0xef4444,
+          emissive: 0xef4444,
+          emissiveIntensity: 3.5,
+          roughness: 0.1
+        });
+        this.warningBeacon = new THREE.Mesh(beaconGeo, beaconMat);
+        this.warningBeacon.position.set(0, bodyH / 2 + 0.35, 0);
+        rackGroup.add(this.warningBeacon);
       }
-    );
-  }
 
-  /**
-   * Sets up 10 Server Racks in Two Distinct Clusters matching the GLB layout:
-   * Left Cluster (5 Racks): R-01, R-02, R-03 (amber warning), R-04, R-05
-   * Right Cluster (5 Racks): R-06, R-07, R-08 (amber warning), R-09 (CRITICAL RED alert), R-10
-   */
-  build10RackFleet() {
-    const leftClusterData = [
-      { id: 'R-01', status: 'NORMAL', risk: 14, cpu: 28, mem: 34, disk: 42, net: 26, temp: 29.2, x: -12.0 },
-      { id: 'R-02', status: 'NORMAL', risk: 18, cpu: 32, mem: 38, disk: 48, net: 31, temp: 30.1, x: -9.8 },
-      { id: 'R-03', status: 'WARNING', risk: 48, cpu: 64, mem: 68, disk: 62, net: 45, temp: 38.6, x: -7.7 },
-      { id: 'R-04', status: 'NORMAL', risk: 16, cpu: 26, mem: 31, disk: 38, net: 24, temp: 28.8, x: -5.5 },
-      { id: 'R-05', status: 'NORMAL', risk: 21, cpu: 35, mem: 40, disk: 43, net: 29, temp: 30.4, x: -3.3 }
-    ];
+      // 5. Invisible Hitbox for Raycasting
+      const hitGeo = new THREE.BoxGeometry(bodyW + 0.1, bodyH + 0.1, bodyD + 0.2);
+      const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0 });
+      const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+      hitMesh.position.set(0, 0, 0);
+      hitMesh.userData = { rackId: cfg.id, isRack: true };
+      rackGroup.add(hitMesh);
+      this.interactiveObjects.push(hitMesh);
 
-    const rightClusterData = [
-      { id: 'R-06', status: 'NORMAL', risk: 22, cpu: 38, mem: 42, disk: 44, net: 33, temp: 31.0, x: 3.3 },
-      { id: 'R-07', status: 'NORMAL', risk: 19, cpu: 31, mem: 36, disk: 41, net: 28, temp: 29.5, x: 5.5 },
-      { id: 'R-08', status: 'WARNING', risk: 58, cpu: 68, mem: 71, disk: 84, net: 49, temp: 41.2, x: 7.7 },
-      { id: 'R-09', status: 'CRITICAL', risk: 87, cpu: 92, mem: 78, disk: 65, net: 41, temp: 47.8, x: 9.8 }, // Critical Alert
-      { id: 'R-10', status: 'NORMAL', risk: 17, cpu: 29, mem: 35, disk: 39, net: 27, temp: 29.8, x: 12.0 }
-    ];
+      this.racksGroup.add(rackGroup);
 
-    leftClusterData.forEach((data) => this.registerRackSlot(data));
-    rightClusterData.forEach((data) => this.registerRackSlot(data));
+      // 6. Create Floating HTML Badge Tag
+      const badgeEl = this.createFloatingBadgeTag(cfg);
 
-    // Select R-09 on load
+      this.racks.set(cfg.id, {
+        group: rackGroup,
+        hitMesh: hitMesh,
+        badgeEl: badgeEl,
+        leds: ledsArray,
+        config: cfg
+      });
+    });
+
+    // Default select R-09 on load
     setTimeout(() => this.selectRack('R-09'), 150);
   }
 
-  registerRackSlot(data) {
-    const isCritical = data.id === 'R-09';
-    const isWarning = data.status === 'WARNING';
-    const zPos = 6.3;
+  /**
+   * Creates floating HTML badge pill above each server rack
+   */
+  createFloatingBadgeTag(cfg) {
+    const isCritical = cfg.id === 'R-09';
+    const isWarning = cfg.status === 'WARNING';
 
-    const group = new THREE.Group();
-    group.position.set(data.x, 0, zPos);
-
-    // 1. Raycast Hit Box for Server Rack Slot
-    const hitBoxGeo = new THREE.BoxGeometry(2.0, 3.4, 1.6);
-    const hitBoxMat = new THREE.MeshBasicMaterial({
-      transparent: true,
-      opacity: 0.0,
-      depthWrite: false
-    });
-    const hitBox = new THREE.Mesh(hitBoxGeo, hitBoxMat);
-    hitBox.position.y = 2.1;
-    hitBox.userData = { rackId: data.id, isRack: true };
-    group.add(hitBox);
-    this.interactiveObjects.push(hitBox);
-
-    // 2. Glowing Neon Red Wireframe Chassis Rim on R-09 (matching reference command center)
-    if (isCritical) {
-      const rimGeo = new THREE.BoxGeometry(2.1, 3.4, 1.65);
-      const rimMat = new THREE.MeshStandardMaterial({
-        color: 0xef4444,
-        emissive: 0xef4444,
-        emissiveIntensity: 3.2,
-        wireframe: true
-      });
-      this.r09RimMesh = new THREE.Mesh(rimGeo, rimMat);
-      this.r09RimMesh.position.y = 2.1;
-      group.add(this.r09RimMesh);
-
-      // Spinning 3D ⚠️ Warning Pyramid Beacon above R-09
-      const coneGeo = new THREE.ConeGeometry(0.38, 0.65, 3);
-      const coneMat = new THREE.MeshStandardMaterial({
-        color: 0xef4444,
-        emissive: 0xef4444,
-        emissiveIntensity: 3.5,
-        roughness: 0.1
-      });
-      this.warningBeaconTriangle = new THREE.Mesh(coneGeo, coneMat);
-      this.warningBeaconTriangle.position.set(0, 4.3, 0);
-      group.add(this.warningBeaconTriangle);
-
-      // Red Alert Warning Spotlight
-      this.r09SpotLight = new THREE.PointLight(0xef4444, 2.8, 8.0, 1.8);
-      this.r09SpotLight.position.set(0, 4.2, 0.5);
-      group.add(this.r09SpotLight);
-    }
-
-    // 3. Amber Warning Highlight on R-08 and R-03
-    if (isWarning) {
-      const amberSpot = new THREE.PointLight(0xf59e0b, 1.6, 6.0, 1.8);
-      amberSpot.position.set(0, 4.5, 0.4);
-      group.add(amberSpot);
-    }
-
-    // 4. Floating HTML Badge Tag Container (R-01 through R-10)
-    const badgeEl = this.createFloatingBadgeTag(data.id, isCritical, isWarning);
-
-    this.scene.add(group);
-    this.racks.set(data.id, {
-      group: group,
-      hitBox: hitBox,
-      badgeEl: badgeEl,
-      data: data
-    });
-  }
-
-  createFloatingBadgeTag(rackId, isCritical, isWarning) {
     const badge = document.createElement('div');
     badge.className = `floating-rack-badge ${isCritical ? 'badge-rack-critical' : (isWarning ? 'badge-rack-warning' : '')}`;
-    badge.setAttribute('data-rack-id', rackId);
+    badge.setAttribute('data-rack-id', cfg.id);
 
     if (isCritical) {
-      badge.innerHTML = `<span class="badge-alert-icon">⚠️</span> <span>${rackId}</span>`;
+      badge.innerHTML = `<span class="badge-alert-icon">⚠️</span> <span>${cfg.id}</span>`;
+    } else if (isWarning) {
+      badge.innerHTML = `<span class="badge-warn-icon">&bull;</span> <span>${cfg.id}</span>`;
     } else {
-      badge.innerText = rackId;
+      badge.innerHTML = `<span>${cfg.id}</span>`;
     }
 
-    badge.addEventListener('click', () => {
-      this.selectRack(rackId);
+    badge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.selectRack(cfg.id);
     });
 
     this.container.appendChild(badge);
     return badge;
   }
 
-  selectRack(rackId) {
-    this.selectedRackId = rackId;
-    const rack = this.racks.get(rackId);
-    if (!rack) return;
+  /**
+   * Updates floating badges screen positions on every animation frame
+   */
+  updateFloatingBadges() {
+    if (!this.camera) return;
 
-    // Highlight active floating badge
-    document.querySelectorAll('.floating-rack-badge').forEach((b) => b.classList.remove('selected'));
-    if (rack.badgeEl) rack.badgeEl.classList.add('selected');
+    const w = this.container.clientWidth;
+    const h = this.container.clientHeight;
+    const tempVec = new THREE.Vector3();
 
-    if (this.onRackSelectCallback) {
-      this.onRackSelectCallback(rackId, rack.data);
-    }
+    this.racks.forEach((data, id) => {
+      const rackGroup = data.group;
+      const badgeEl = data.badgeEl;
+      if (!rackGroup || !badgeEl) return;
+
+      // Top of the rack in world space
+      tempVec.set(rackGroup.position.x, rackGroup.position.y + 1.25, rackGroup.position.z);
+      tempVec.project(this.camera);
+
+      // Behind camera check
+      if (tempVec.z > 1) {
+        badgeEl.style.display = 'none';
+        return;
+      }
+
+      badgeEl.style.display = 'flex';
+      const screenX = (tempVec.x * 0.5 + 0.5) * w;
+      const screenY = (-(tempVec.y * 0.5) + 0.5) * h;
+
+      badgeEl.style.left = `${screenX}px`;
+      badgeEl.style.top = `${screenY}px`;
+    });
   }
 
   onRackSelect(callback) {
     this.onRackSelectCallback = callback;
   }
 
-  setCameraPreset(preset) {
-    let targetPos = new THREE.Vector3(0.0, 4.4, 21.0);
-    let lookAt = new THREE.Vector3(0.0, 2.0, 1.0);
+  remediateServer(rackId) {
+    if (rackId === 'R-09') {
+      this.remediateR09();
+    }
+  }
 
-    switch (preset) {
-      case 'overview':
-        targetPos.set(0.0, 4.4, 21.0);
-        lookAt.set(0.0, 2.0, 1.0);
-        break;
+  /**
+   * Selects a server rack and applies visual focus
+   */
+  selectRack(rackId) {
+    if (!this.racks.has(rackId)) return;
+
+    this.selectedRackId = rackId;
+
+    // Update badge styling
+    this.racks.forEach((data, id) => {
+      if (data.badgeEl) {
+        if (id === rackId) {
+          data.badgeEl.classList.add('badge-active-selected');
+        } else {
+          data.badgeEl.classList.remove('badge-active-selected');
+        }
+      }
+    });
+
+    if (this.onRackSelectCallback) {
+      this.onRackSelectCallback(rackId);
+    }
+  }
+
+  /**
+   * Camera Presets: Overview, Left, Right, Focus R-09
+   */
+  setCameraPreset(presetName) {
+    if (!this.controls || !this.camera) return;
+
+    let targetPos = new THREE.Vector3(0, 0.35, 9.2);
+    let targetLook = new THREE.Vector3(0, -0.15, 0);
+
+    switch (presetName) {
       case 'left':
-        targetPos.set(-7.7, 3.6, 13.0);
-        lookAt.set(-7.7, 2.0, 6.8);
+        targetPos.set(-2.1, 0.25, 6.2);
+        targetLook.set(-2.1, -0.2, 0);
         break;
       case 'right':
-        targetPos.set(7.7, 3.6, 13.0);
-        lookAt.set(7.7, 2.0, 6.8);
+        targetPos.set(2.1, 0.25, 6.2);
+        targetLook.set(2.1, -0.2, 0);
         break;
-      case 'top':
-        targetPos.set(0.0, 24.0, 6.0);
-        lookAt.set(0.0, 0.0, 5.0);
+      case 'r09':
+        targetPos.set(2.45, 0.15, 4.2);
+        targetLook.set(2.45, -0.25, 0);
+        break;
+      case 'overview':
+      default:
+        targetPos.set(0, 0.35, 9.2);
+        targetLook.set(0, -0.15, 0);
         break;
     }
 
-    this.cameraTargetPos = targetPos;
-    this.cameraLookTarget = lookAt;
+    this.smoothTransitionCamera(targetPos, targetLook);
   }
 
-  setTheme(theme) {
-    this.currentTheme = theme;
-    const isDark = theme === 'dark';
+  smoothTransitionCamera(targetPos, targetLook) {
+    const startPos = this.camera.position.clone();
+    const startLook = this.controls.target.clone();
+    const duration = 750; // ms
+    const startTime = performance.now();
 
-    this.scene.background.setHex(isDark ? 0x070d18 : 0xf1f5f9);
-    this.scene.fog.color.setHex(isDark ? 0x070d18 : 0xf1f5f9);
+    const animateStep = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1.0);
+      const ease = 0.5 - Math.cos(progress * Math.PI) / 2; // Smooth cosine ease
 
-    if (this.ambientLight) {
-      this.ambientLight.color.setHex(isDark ? 0x0f172a : 0xffffff);
-      this.ambientLight.intensity = isDark ? 1.0 : 2.4;
-    }
-    if (this.keySun) {
-      this.keySun.color.setHex(isDark ? 0x38bdf8 : 0xfffaf0);
-      this.keySun.intensity = isDark ? 1.5 : 2.8;
-    }
-    if (this.fillLight) {
-      this.fillLight.color.setHex(isDark ? 0x00f0ff : 0xdbeafe);
-      this.fillLight.intensity = isDark ? 1.1 : 1.4;
-    }
+      this.camera.position.lerpVectors(startPos, targetPos, ease);
+      this.controls.target.lerpVectors(startLook, targetLook, ease);
+      this.controls.update();
 
-    if (this.floorMesh) {
-      this.floorMesh.material.map = this.createFloorTexture(isDark);
-      this.floorMesh.material.needsUpdate = true;
-    }
+      if (progress < 1.0) {
+        requestAnimationFrame(animateStep);
+      }
+    };
 
-    if (this.skylineMesh) {
-      this.skylineMesh.material.map = this.createSkylineTexture(isDark);
-      this.skylineMesh.material.needsUpdate = true;
-    }
-
-    this.trofferMeshes.forEach((t) => {
-      t.diffuser.material.emissive.setHex(isDark ? 0x38bdf8 : 0xffffff);
-      t.diffuser.material.emissiveIntensity = isDark ? 2.8 : 3.5;
-      t.diffuser.material.needsUpdate = true;
-    });
+    requestAnimationFrame(animateStep);
   }
 
-  remediateServer(serverId) {
-    const rack = this.racks.get(serverId);
-    if (!rack) return;
-
-    rack.data.status = 'NORMAL';
-    rack.data.risk = 12;
-    rack.data.cpu = 28;
-    rack.data.mem = 32;
-
-    if (this.r09RimMesh) {
-      this.r09RimMesh.visible = false;
-    }
-    if (this.warningBeaconTriangle) {
-      this.warningBeaconTriangle.visible = false;
-    }
-    if (this.r09SpotLight) {
-      this.r09SpotLight.visible = false;
-    }
-
-    if (rack.badgeEl) {
-      rack.badgeEl.className = 'floating-rack-badge';
-      rack.badgeEl.innerText = serverId;
-    }
-  }
-
-  remediateRack(rackId) {
-    this.remediateServer(rackId);
-  }
-
-  onPointerDown(event) {
+  /**
+   * Raycasting Pointer Interaction
+   */
+  onPointerDown(e) {
     const rect = this.renderer.domElement.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.interactiveObjects, false);
+    const intersects = this.raycaster.intersectObjects(this.interactiveObjects, true);
 
     if (intersects.length > 0) {
       const hit = intersects[0].object;
-      const rackId = hit.userData.rackId;
-      if (rackId) {
-        this.selectRack(rackId);
+      if (hit.userData && hit.userData.rackId) {
+        this.selectRack(hit.userData.rackId);
       }
     }
   }
 
+  /**
+   * Auto-Remediation: Restores R-09 to Nominal Healthy Green
+   */
+  remediateR09() {
+    this.isAlertActive = false;
+
+    // 1. Hide Critical Beacon and Halo
+    if (this.warningBeacon) this.warningBeacon.visible = false;
+    if (this.r09HaloMesh) this.r09HaloMesh.visible = false;
+    if (this.r09Light) this.r09Light.intensity = 0.0;
+
+    // 2. Turn R-09 LEDs to Emerald Green
+    const r09Data = this.racks.get('R-09');
+    if (r09Data && r09Data.leds) {
+      const greenMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+      r09Data.leds.forEach((led) => {
+        led.material = greenMat;
+      });
+    }
+
+    // 3. Update Badge to Normal
+    if (r09Data && r09Data.badgeEl) {
+      r09Data.badgeEl.className = 'floating-rack-badge badge-active-selected';
+      r09Data.badgeEl.innerHTML = `<span>● R-09</span>`;
+    }
+
+    // 4. Remove emergency border from viewport card
+    const card = document.getElementById('viewport-3d-card');
+    if (card) card.classList.remove('in-emergency');
+  }
+
+  /**
+   * Triggers Critical Outage Alert Simulation on R-09
+   */
+  triggerAlertSimulation() {
+    this.isAlertActive = true;
+
+    // 1. Show Warning Beacon & Alert Halo
+    if (this.warningBeacon) this.warningBeacon.visible = true;
+    if (this.r09HaloMesh) this.r09HaloMesh.visible = true;
+    if (this.r09Light) this.r09Light.intensity = 4.0;
+
+    // 2. Set R-09 LEDs to Intense Red
+    const r09Data = this.racks.get('R-09');
+    if (r09Data && r09Data.leds) {
+      const redMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+      r09Data.leds.forEach((led) => {
+        led.material = redMat;
+      });
+    }
+
+    // 3. Update Badge to Critical
+    if (r09Data && r09Data.badgeEl) {
+      r09Data.badgeEl.className = 'floating-rack-badge badge-rack-critical badge-active-selected';
+      r09Data.badgeEl.innerHTML = `<span class="badge-alert-icon">⚠️</span> <span>R-09</span>`;
+    }
+
+    // 4. Select R-09 and focus camera
+    this.selectRack('R-09');
+
+    // 5. Add emergency glow border to viewport card
+    const card = document.getElementById('viewport-3d-card');
+    if (card) card.classList.add('in-emergency');
+  }
+
   onWindowResize() {
-    if (!this.camera || !this.renderer || !this.container) return;
+    if (!this.container || !this.renderer || !this.camera) return;
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
     this.camera.aspect = w / h;
@@ -609,186 +585,38 @@ export class DataCenterScene {
     this.renderer.setSize(w, h);
   }
 
-  updateFloatingBadges() {
-    const tempV = new THREE.Vector3();
-    const w = this.container.clientWidth;
-    const h = this.container.clientHeight;
-
-    this.racks.forEach((rack) => {
-      if (!rack.badgeEl || !rack.group) return;
-
-      tempV.set(rack.group.position.x, 4.4, rack.group.position.z);
-      tempV.project(this.camera);
-
-      if (tempV.z > 1) {
-        rack.badgeEl.style.display = 'none';
-        return;
-      }
-
-      rack.badgeEl.style.display = 'flex';
-      const x = (tempV.x * 0.5 + 0.5) * w;
-      const y = (-(tempV.y * 0.5) + 0.5) * h;
-
-      rack.badgeEl.style.left = `${x}px`;
-      rack.badgeEl.style.top = `${y}px`;
-    });
-  }
-
-  createFloorTexture(isDark = false) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = isDark ? '#0a101f' : '#f8fafd';
-    ctx.fillRect(0, 0, 1024, 1024);
-
-    ctx.strokeStyle = isDark ? '#1e293b' : '#e2e8f0';
-    ctx.lineWidth = 2.5;
-    const tileSize = 128;
-    for (let x = 0; x <= 1024; x += tileSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, 1024);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= 1024; y += tileSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(1024, y);
-      ctx.stroke();
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(4.0, 3.0);
-    return texture;
-  }
-
-  createSkylineTexture(isDark = false) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 2048;
-    canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
-
-    if (!isDark) {
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, 1024);
-      skyGrad.addColorStop(0, '#93c5fd');
-      skyGrad.addColorStop(0.4, '#bfdbfe');
-      skyGrad.addColorStop(0.7, '#f1f5f9');
-      skyGrad.addColorStop(1, '#e2e8f0');
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, 2048, 1024);
-    } else {
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, 1024);
-      skyGrad.addColorStop(0, '#020617');
-      skyGrad.addColorStop(0.5, '#070f26');
-      skyGrad.addColorStop(1, '#0b193d');
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, 2048, 1024);
-    }
-
-    return new THREE.CanvasTexture(canvas);
-  }
-
-  buildBrandedSideWall(xPos, textLines, isLeft) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(0, 0, 1024, 512);
-
-    ctx.fillStyle = '#475569';
-    ctx.font = '800 48px Inter, sans-serif';
-
-    const lines = textLines.split('\n');
-    lines.forEach((line, idx) => {
-      ctx.fillText(line, 100, 180 + idx * 64);
-    });
-
-    const tex = new THREE.CanvasTexture(canvas);
-    const mat = new THREE.MeshStandardMaterial({
-      map: tex,
-      roughness: 0.3,
-      side: THREE.DoubleSide
-    });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), mat);
-    mesh.rotation.y = isLeft ? Math.PI / 2 : -Math.PI / 2;
-    mesh.position.set(xPos, 5.0, 0);
-    this.scene.add(mesh);
-  }
-
-  createPottedPlant(x, y, z) {
-    const group = new THREE.Group();
-    group.position.set(x, y, z);
-
-    const potGeo = new THREE.CylinderGeometry(0.48, 0.40, 0.95, 24);
-    const potMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.15,
-      metalness: 0.1
-    });
-    const potMesh = new THREE.Mesh(potGeo, potMat);
-    potMesh.position.y = 0.48;
-    potMesh.castShadow = true;
-    group.add(potMesh);
-
-    const leafGeo = new THREE.SphereGeometry(0.70, 12, 10);
-    leafGeo.scale(1.2, 0.4, 0.8);
-    const leafMat = new THREE.MeshStandardMaterial({
-      color: 0x15803d,
-      roughness: 0.35
-    });
-
-    for (let i = 0; i < 6; i++) {
-      const leaf = new THREE.Mesh(leafGeo, leafMat);
-      const angle = (i / 6) * Math.PI * 2;
-      leaf.position.set(Math.cos(angle) * 0.38, 1.15 + Math.sin(i) * 0.15, Math.sin(angle) * 0.38);
-      leaf.rotation.set(0.35, angle, 0.4);
-      leaf.castShadow = true;
-      group.add(leaf);
-    }
-
-    this.scene.add(group);
-  }
-
+  /**
+   * Main Render & Animation Loop
+   */
   animate() {
     requestAnimationFrame(() => this.animate());
 
-    const time = performance.now() * 0.001;
+    const delta = this.clock.getDelta();
+    const time = this.clock.getElapsedTime();
 
-    // 1. Smooth Camera Transition (Lerp)
-    if (this.cameraTargetPos && this.cameraLookTarget) {
-      this.camera.position.lerp(this.cameraTargetPos, 0.06);
-      this.controls.target.lerp(this.cameraLookTarget, 0.06);
+    if (this.controls) {
+      this.controls.update();
+    }
 
-      if (this.camera.position.distanceTo(this.cameraTargetPos) < 0.05) {
-        this.cameraTargetPos = null;
-        this.cameraLookTarget = null;
+    // Emergency Beacon & Halo Pulsing
+    if (this.isAlertActive) {
+      if (this.warningBeacon) {
+        this.warningBeacon.rotation.y += delta * 2.8;
+      }
+      if (this.r09HaloMesh) {
+        const pulse = 0.35 + 0.25 * Math.sin(time * 5.0);
+        this.r09HaloMesh.material.opacity = pulse;
+      }
+      if (this.r09Light) {
+        this.r09Light.intensity = 3.0 + 2.0 * Math.sin(time * 6.0);
       }
     }
 
-    // 2. Animate Server Activity LEDs
-    this.blinkingGlbLeds.forEach((mesh, idx) => {
-      if (mesh.material && mesh.material.emissive) {
-        const flicker = Math.sin(time * 5.0 + idx) > 0.1 ? 2.8 : 0.8;
-        mesh.material.emissiveIntensity = flicker;
-      }
-    });
-
-    // 3. Float & Spin the Warning Triangle above R-09
-    if (this.warningBeaconTriangle && this.warningBeaconTriangle.visible) {
-      this.warningBeaconTriangle.position.y = 4.6 + Math.sin(time * 3.5) * 0.08;
-      this.warningBeaconTriangle.rotation.y = time * 2.0;
-    }
-
-    this.controls.update();
-    this.renderer.render(this.scene, this.camera);
-
-    // 4. Update Screen Space Positions of Floating Badges
+    // Update screen positions of 10 floating badges
     this.updateFloatingBadges();
+
+    if (this.renderer && this.scene && this.camera) {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 }

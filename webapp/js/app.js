@@ -34,6 +34,7 @@ class DCHealthApp {
     this.initInteractiveInspector();
     this.initCharts();
     this.initAutoRemediation();
+    this.initTestAlertSimulation();
     this.initBenchmarkModal();
     this.connectLiveWebSocket();
   }
@@ -663,40 +664,70 @@ class DCHealthApp {
             body: JSON.stringify({ rack_id: this.selectedServerId })
           });
 
-          if (res.ok) {
-            soundEngine.playSelect();
-            const server = this.serversData.get(this.selectedServerId);
-            if (server) {
-              server.status = 'NORMAL';
-              server.score = 96;
-              server.risk = 12;
-              server.cpu = 28;
-              server.mem = 32;
-              server.disk = 36;
-              server.net = 24;
-              server.failure = '> 30 days';
-              server.culprit = 'Workload Migrated Successfully';
-              server.desc = 'Automated failover executed. Memory leaked process recycled, workloads drained to backup cluster node.';
-              server.actions = ['Node operational in healthy baseline', 'Workloads balanced'];
-            }
+          // Stop alarm sound and play crystal clear healing chime
+          soundEngine.stopAlarm();
+          soundEngine.playHealChime();
 
-            const elH = document.getElementById('card-healthy-count');
-            const elC = document.getElementById('card-critical-count');
-            if (elH) elH.innerText = '25';
-            if (elC) elC.innerText = '0';
-
-            this.selectServer(this.selectedServerId);
-
-            if (this.scene && this.scene.remediateServer) {
-              this.scene.remediateServer(this.selectedServerId);
-            }
-
-            btn.innerHTML = `<span>✓</span> Workloads Remediated`;
-            setTimeout(() => {
-              btn.disabled = false;
-              btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Ask AI for more details`;
-            }, 3000);
+          const server = this.serversData.get(this.selectedServerId);
+          if (server) {
+            server.status = 'NORMAL';
+            server.score = 98;
+            server.risk = 8;
+            server.cpu = 24;
+            server.mem = 32;
+            server.disk = 36;
+            server.net = 22;
+            server.failure = '> 30 days';
+            server.culprit = 'Workloads Auto-Remediated';
+            server.desc = 'Automated failover executed. Memory-leaked process recycled and worker pods drained to healthy standby node.';
+            server.actions = ['Node operational in healthy baseline', 'Cluster workloads balanced'];
           }
+
+          // Update KPI Cards
+          const elH = document.getElementById('card-healthy-count');
+          const elC = document.getElementById('card-critical-count');
+          if (elH) elH.innerText = '25';
+          if (elC) elC.innerText = '0';
+
+          // Update System Live indicator
+          const livePill = document.getElementById('system-live-pill');
+          const liveTitle = document.getElementById('system-live-title');
+          const liveSub = document.getElementById('system-live-sub');
+          if (livePill) livePill.classList.remove('in-critical');
+          if (liveTitle) liveTitle.innerText = 'System Live';
+          if (liveSub) liveSub.innerText = 'All systems operational';
+
+          // Refresh Inspector
+          this.selectServer(this.selectedServerId);
+
+          // Trigger 3D scene remediation
+          if (this.scene) {
+            if (this.scene.remediateR09) this.scene.remediateR09();
+            if (this.scene.remediateServer) this.scene.remediateServer(this.selectedServerId);
+          }
+
+          // Prepend recovery notice to recent alerts list
+          const alertsList = document.getElementById('recent-alerts-container');
+          if (alertsList) {
+            const healItem = document.createElement('div');
+            healItem.className = 'alert-item alert-item-info';
+            healItem.innerHTML = `
+              <div class="alert-icon-col text-blue">&bull;</div>
+              <div class="alert-info-col">
+                <div class="alert-rack-tag tag-blue">${this.selectedServerId}</div>
+                <span class="alert-msg">Auto-remediation successful: workloads nominal</span>
+              </div>
+              <span class="alert-time">Just now</span>
+            `;
+            alertsList.insertBefore(healItem, alertsList.firstChild);
+          }
+
+          btn.innerHTML = `<span>✓</span> Workloads Remediated`;
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = `<span class="btn-remediate-icon">⚡</span><span>Execute Auto-Remediation</span>`;
+          }, 3500);
+
         } catch (e) {
           console.error('Remediation call error:', e);
           btn.disabled = false;
@@ -704,6 +735,79 @@ class DCHealthApp {
         }
       });
     }
+  }
+
+  /**
+   * Initializes the Interactive Test Alert Simulation
+   * Tests real-time anomaly alerts, audio siren, viewport flashing, and Groq RCA
+   */
+  initTestAlertSimulation() {
+    const testBtn = document.getElementById('btn-test-alert');
+    if (!testBtn) return;
+
+    testBtn.addEventListener('click', () => {
+      // 1. Start audio siren alarm
+      soundEngine.ensureContext();
+      soundEngine.startAlarm();
+
+      // 2. Trigger 3D alert on R-09
+      if (this.scene && this.scene.triggerAlertSimulation) {
+        this.scene.triggerAlertSimulation();
+      }
+
+      // 3. Update server R-09 metrics to critical
+      const server = this.serversData.get('R-09');
+      if (server) {
+        server.status = 'CRITICAL';
+        server.score = 13;
+        server.risk = 87;
+        server.cpu = 92;
+        server.mem = 78;
+        server.disk = 65;
+        server.net = 41;
+        server.failure = '~ 17 minutes';
+        server.culprit = 'High Memory Leak & Disk I/O Thrashing';
+        server.desc = 'Unusual spike in memory usage combined with increasing disk I/O. Pattern matches memory leak or runaway worker process on server R-09.';
+        server.actions = [
+          'Check memory-intensive processes on node R-09',
+          'Inspect disk queue and I/O wait latency',
+          'Execute auto-remediation to trigger failover'
+        ];
+      }
+
+      // 4. Update KPI Cards
+      const elH = document.getElementById('card-healthy-count');
+      const elC = document.getElementById('card-critical-count');
+      if (elH) elH.innerText = '24';
+      if (elC) elC.innerText = '1';
+
+      // 5. Update System Live indicator to critical warning
+      const livePill = document.getElementById('system-live-pill');
+      const liveTitle = document.getElementById('system-live-title');
+      const liveSub = document.getElementById('system-live-sub');
+      if (livePill) livePill.classList.add('in-critical');
+      if (liveTitle) liveTitle.innerText = 'Critical Outage Active';
+      if (liveSub) liveSub.innerText = 'Incident on Server R-09';
+
+      // 6. Select server R-09 and update Inspector
+      this.selectServer('R-09');
+
+      // 7. Prepend alert to recent alerts list
+      const alertsList = document.getElementById('recent-alerts-container');
+      if (alertsList) {
+        const alertItem = document.createElement('div');
+        alertItem.className = 'alert-item alert-item-critical';
+        alertItem.innerHTML = `
+          <div class="alert-icon-col text-red">&Delta;</div>
+          <div class="alert-info-col">
+            <div class="alert-rack-tag tag-red">R-09</div>
+            <span class="alert-msg">Simulated Outage: Memory leak & disk queue alert</span>
+          </div>
+          <span class="alert-time">Just now</span>
+        `;
+        alertsList.insertBefore(alertItem, alertsList.firstChild);
+      }
+    });
   }
 
   initBenchmarkModal() {
